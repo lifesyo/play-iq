@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Play IQ — タグ付けプレイヤー</title>
+<style>
+  :root{
+    --bg:#0b0e14;--panel:#141923;--panel-2:#1b2230;--line:#27303f;
+    --txt:#e8edf5;--txt-dim:#8b97a8;--accent:#ff5a3c;--accent-2:#3ca5ff;
+    --ok:#36d399;--warn:#fbbd23;--radius:14px;--shadow:0 8px 30px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(60,165,255,.07), transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, rgba(255,90,60,.08), transparent 55%),
+      var(--bg);
+    color:var(--txt);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic UI",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    display:grid;grid-template-columns:240px 1fr 380px;grid-template-rows:auto 1fr;
+    grid-template-areas:"head head head" "games main side";height:100vh;
+  }
+  header{
+    grid-area:head;display:flex;align-items:center;gap:16px;padding:14px 22px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(27,34,48,.6),transparent);backdrop-filter:blur(8px);
+  }
+  .logo{display:flex;align-items:center;gap:11px;}
+  .logo .mark{
+    width:38px;height:38px;border-radius:11px;
+    background:linear-gradient(135deg,var(--accent),#ff8a3c);
+    display:grid;place-items:center;font-weight:800;font-size:15px;
+    color:#fff;letter-spacing:-.5px;box-shadow:0 4px 14px rgba(255,90,60,.4);
+  }
+  .logo h1{font-size:18px;font-weight:800;letter-spacing:-.3px;}
+  .logo span{font-size:11px;color:var(--txt-dim);font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+  .cur-game{flex:1;display:flex;align-items:center;gap:12px;min-width:0;}
+  .cur-game .title{font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cur-game .date{font-size:12px;color:var(--txt-dim);font-weight:600;white-space:nowrap;}
+  .btn{
+    border:none;cursor:pointer;font-weight:700;font-size:13px;padding:10px 16px;
+    border-radius:10px;transition:transform .1s,filter .15s;color:#fff;background:var(--accent-2);white-space:nowrap;
+  }
+  .btn:hover{filter:brightness(1.1);}
+  .btn:active{transform:scale(.97);}
+  .btn.ghost{background:var(--panel-2);color:var(--txt);border:1px solid var(--line);}
+  .games{grid-area:games;border-right:1px solid var(--line);background:rgba(20,25,35,.5);display:flex;flex-direction:column;overflow:hidden;}
+  .games-head{padding:15px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+  .games-head h2{font-size:13px;font-weight:700;color:var(--txt-dim);letter-spacing:.5px;text-transform:uppercase;}
+  .add-game-btn{background:var(--accent-2);color:#fff;border:none;cursor:pointer;width:26px;height:26px;border-radius:8px;font-size:18px;line-height:1;display:grid;place-items:center;transition:.12s;}
+  .add-game-btn:hover{filter:brightness(1.1);}
+  .games-list{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:7px;}
+  .games-list::-webkit-scrollbar{width:7px;}
+  .games-list::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+  .game-card{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 13px;cursor:pointer;transition:.15s;position:relative;}
+  .game-card:hover{background:var(--panel-2);}
+  .game-card.active{border-color:var(--accent);background:var(--panel-2);}
+  .game-card.active::before{content:"";position:absolute;left:0;top:11px;bottom:11px;width:3px;background:var(--accent);border-radius:0 3px 3px 0;}
+  .game-card .gname{font-size:13.5px;font-weight:700;margin-bottom:3px;word-break:break-word;}
+  .game-card .gmeta{font-size:11.5px;color:var(--txt-dim);display:flex;justify-content:space-between;gap:8px;}
+  .game-card .gdel{position:absolute;top:9px;right:9px;color:var(--txt-dim);font-size:14px;opacity:0;transition:.12s;cursor:pointer;}
+  .game-card:hover .gdel{opacity:.5;}
+  .game-card .gdel:hover{opacity:1;color:var(--accent);}
+  .games-empty{text-align:center;color:var(--txt-dim);font-size:12.5px;padding:40px 16px;line-height:1.9;}
+  main{grid-area:main;padding:22px;display:flex;flex-direction:column;gap:18px;overflow:hidden;}
+  .player-wrap{position:relative;width:100%;background:#000;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);aspect-ratio:16/9;}
+  .player-wrap #player{width:100%;height:100%;}
+  .player-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--txt-dim);font-size:14px;line-height:1.9;padding:20px;}
+  .player-empty b{color:var(--txt);display:block;font-size:16px;margin-bottom:6px;}
+  .tagdeck{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:13px;}
+  .tagdeck.disabled{opacity:.45;pointer-events:none;}
+  .tagdeck .deck-head{display:flex;align-items:center;justify-content:space-between;}
+  .tagdeck .deck-head h2{font-size:13px;font-weight:700;color:var(--txt-dim);letter-spacing:.5px;text-transform:uppercase;}
+  .transport{display:flex;gap:9px;}
+  .tp-btn{flex:1;border:1px solid var(--line);background:var(--panel-2);color:var(--txt);cursor:pointer;padding:10px;border-radius:11px;font-weight:700;font-size:14px;transition:transform .1s,filter .15s;font-variant-numeric:tabular-nums;}
+  .tp-btn:hover{filter:brightness(1.15);}
+  .tp-btn:active{transform:scale(.96);}
+  .now{font-variant-numeric:tabular-nums;font-size:13px;color:var(--txt-dim);font-weight:600;}
+  .now b{color:var(--accent);font-size:15px;}
+  .tag-buttons{display:flex;flex-wrap:wrap;gap:9px;}
+  .tag-btn{border:1px solid var(--line);background:var(--panel-2);color:var(--txt);cursor:pointer;padding:11px 16px;border-radius:11px;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;transition:transform .1s,filter .15s;position:relative;}
+  .tag-btn:hover{filter:brightness(1.15);transform:translateY(-1px);}
+  .tag-btn:active{transform:scale(.95);}
+  .tag-btn .dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+  .tag-btn .x{margin-left:2px;color:var(--txt-dim);font-size:15px;line-height:1;opacity:0;transition:opacity .12s;padding:0 2px;border-radius:4px;}
+  .tag-btn:hover .x{opacity:.7;}
+  .tag-btn .x:hover{opacity:1;color:var(--accent);}
+  .add-tag{border:1px dashed var(--line);background:transparent;color:var(--txt-dim);cursor:pointer;padding:11px 15px;border-radius:11px;font-weight:700;font-size:14px;transition:border-color .15s,color .15s;}
+  .add-tag:hover{border-color:var(--accent-2);color:var(--accent-2);}
+  .hint{font-size:11.5px;color:var(--txt-dim);line-height:1.6;}
+  .hint kbd{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11px;font-family:inherit;color:var(--txt);}
+  aside{grid-area:side;border-left:1px solid var(--line);background:rgba(20,25,35,.5);display:flex;flex-direction:column;overflow:hidden;}
+  .side-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:12px;}
+  .side-head .row{display:flex;align-items:center;justify-content:space-between;}
+  .side-head h2{font-size:15px;font-weight:800;}
+  .count-pill{background:var(--panel-2);border:1px solid var(--line);border-radius:20px;padding:3px 11px;font-size:12px;font-weight:700;color:var(--txt-dim);}
+  .filters{display:flex;flex-wrap:wrap;gap:6px;}
+  .filter-chip{border:1px solid var(--line);background:var(--panel);color:var(--txt-dim);cursor:pointer;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;transition:.15s;}
+  .filter-chip .dot{width:8px;height:8px;border-radius:50%;}
+  .filter-chip.active{color:var(--txt);background:var(--panel-2);border-color:var(--txt-dim);}
+  .tag-list{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;}
+  .tag-list::-webkit-scrollbar{width:8px;}
+  .tag-list::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+  .empty-list{text-align:center;color:var(--txt-dim);font-size:13px;padding:50px 20px;line-height:1.9;}
+  .tag-item{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 13px;cursor:pointer;transition:.15s;display:flex;gap:11px;align-items:flex-start;border-left-width:3px;}
+  .tag-item:hover{background:var(--panel-2);transform:translateX(-2px);}
+  .tag-item .time{font-variant-numeric:tabular-nums;font-weight:800;font-size:14px;color:var(--accent-2);flex-shrink:0;min-width:52px;}
+  .tag-item .body{flex:1;min-width:0;}
+  .tag-item .label{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:7px;}
+  .tag-item .label .dot{width:9px;height:9px;border-radius:50%;}
+  .tag-item .note{font-size:12px;color:var(--txt-dim);margin-top:3px;word-break:break-word;}
+  .tag-item .note-input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--txt);border-radius:7px;padding:5px 8px;font-size:12px;margin-top:6px;outline:none;font-family:inherit;}
+  .tag-item .del{color:var(--txt-dim);font-size:16px;line-height:1;cursor:pointer;flex-shrink:0;opacity:0;transition:.12s;padding:2px;}
+  .tag-item:hover .del{opacity:.6;}
+  .tag-item .del:hover{opacity:1;color:var(--accent);}
+  .modal-bg{position:fixed;inset:0;background:rgba(5,7,11,.7);backdrop-filter:blur(4px);display:none;place-items:center;z-index:50;}
+  .modal-bg.show{display:grid;}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;width:360px;box-shadow:var(--shadow);}
+  .modal h3{font-size:17px;font-weight:800;margin-bottom:18px;}
+  .modal label{font-size:12px;color:var(--txt-dim);font-weight:700;display:block;margin-bottom:7px;}
+  .modal input[type=text]{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--txt);padding:11px 13px;border-radius:10px;font-size:14px;outline:none;margin-bottom:16px;font-family:inherit;}
+  .modal input:focus{border-color:var(--accent-2);}
+  .swatches{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:22px;}
+  .swatch{width:30px;height:30px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:.12s;}
+  .swatch.sel{border-color:#fff;transform:scale(1.12);}
+  .modal-actions{display:flex;gap:10px;}
+  .modal-actions .btn{flex:1;justify-content:center;text-align:center;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="mark">IQ</div>
+      <div><h1>Play IQ</h1><span>Tagging Player</span></div>
+    </div>
+    <div class="cur-game" id="curGame">
+      <div class="title" id="curTitle" style="color:var(--txt-dim);font-weight:600">試合を選択してください</div>
+      <div class="date" id="curDate"></div>
+    </div>
+  </header>
+  <div class="games">
+    <div class="games-head">
+      <h2>試合</h2>
+      <button class="add-game-btn" id="addGameBtn" title="試合を追加">＋</button>
+    </div>
+    <div class="games-list" id="gamesList"></div>
+  </div>
+  <main>
+    <div class="player-wrap">
+      <div id="player"></div>
+      <div class="player-empty" id="playerEmpty">
+        <div><b>試合を追加して始めましょう</b>
+        左上の ＋ から、試合名・日付・YouTube の URL を入力してください。<br>
+        動画は限定公開（Unlisted）でOKです。</div>
+      </div>
+    </div>
+    <div class="tagdeck disabled" id="tagdeck">
+      <div class="deck-head">
+        <h2>タグを打つ</h2>
+        <div class="now">現在位置 <b id="nowTime">0:00</b></div>
+      </div>
+      <div class="transport">
+        <button class="tp-btn" id="back5">⏪ 5秒</button>
+        <button class="tp-btn" id="playpause">▶ / ⏸</button>
+        <button class="tp-btn" id="fwd5">5秒 ⏩</button>
+      </div>
+      <div class="tag-buttons" id="tagButtons"></div>
+      <div class="hint">プレーが起きた瞬間にタグを押すと、その再生位置が記録されます。
+      <kbd>1</kbd>〜<kbd>9</kbd> でタグ打ち、<kbd>,</kbd>／<kbd>.</kbd> で5秒戻る／進む（タグデッキを一度クリックしてから）。タグの種類は試合ごとに別々に管理されます。</div>
+    </div>
+  </main>
+  <aside>
+    <div class="side-head">
+      <div class="row"><h2>タグ一覧</h2><span class="count-pill" id="countPill">0 件</span></div>
+      <div class="filters" id="filters"></div>
+    </div>
+    <div class="tag-list" id="tagList">
+      <div class="empty-list">試合を選ぶとタグが表示されます。</div>
+    </div>
+  </aside>
+</div>
+<div class="modal-bg" id="gameModalBg">
+  <div class="modal">
+    <h3>試合を追加</h3>
+    <label>試合名</label>
+    <input type="text" id="gName" placeholder="例：○○中学戦">
+    <label>日付</label>
+    <input type="text" id="gDate" placeholder="例：令和8年5月23日">
+    <label>YouTube URL</label>
+    <input type="text" id="gUrl" placeholder="https://youtu.be/...">
+    <div class="modal-actions">
+      <button class="btn ghost" id="cancelGame">キャンセル</button>
+      <button class="btn" id="createGame">追加</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="tagModalBg">
+  <div class="modal">
+    <h3>新しいタグを作る</h3>
+    <label>タグ名</label>
+    <input type="text" id="newTagName" placeholder="例：リバウンド、ターンオーバー">
+    <label>色</label>
+    <div class="swatches" id="swatches"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="cancelTag">キャンセル</button>
+      <button class="btn" id="createTag">作成</button>
+    </div>
+  </div>
+</div>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+const PALETTE=["#ff5a3c","#3ca5ff","#36d399","#fbbd23","#a78bfa","#f471b5","#2dd4bf","#fb923c"];
+const DEFAULT_TAGTYPES=()=>[
+  {id:"t1",name:"リバウンド",color:"#3ca5ff"},
+  {id:"t2",name:"ターンオーバー",color:"#ff5a3c"},
+  {id:"t3",name:"シュート",color:"#36d399"},
+];
+let games=[],currentGameId=null,activeFilter=null,selectedColor=PALETTE[0];
+function curGame(){return games.find(g=>g.id===currentGameId)||null;}
+let player=null,pollTimer=null;
+function playerReady(){return !!(player&&typeof player.getCurrentTime==="function"&&typeof player.getPlayerState==="function"&&player.getPlayerState()!==-1);}
+function onYouTubeIframeAPIReady(){}
+function extractId(url){const m=url.match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/);return m?m[1]:(url.trim().length===11?url.trim():null);}
+function mountVideo(videoId){
+  document.getElementById("playerEmpty").style.display="none";
+  if(player){player.loadVideoById(videoId);startPoll();return;}
+  player=new YT.Player("player",{videoId,playerVars:{rel:0,modestbranding:1,playsinline:1},events:{onReady:()=>{startPoll();}}});
+}
+function startPoll(){clearInterval(pollTimer);pollTimer=setInterval(()=>{if(playerReady()){document.getElementById("nowTime").textContent=fmt(player.getCurrentTime());}},250);}
+function fmt(s){s=Math.floor(s||0);const m=Math.floor(s/60),sec=s%60;return m+":"+String(sec).padStart(2,"0");}
+function openGameModal(){document.getElementById("gName").value="";document.getElementById("gDate").value="";document.getElementById("gUrl").value="";document.getElementById("gameModalBg").classList.add("show");document.getElementById("gName").focus();}
+function closeGameModal(){document.getElementById("gameModalBg").classList.remove("show");}
+function createGame(){
+  const name=document.getElementById("gName").value.trim();
+  const date=document.getElementById("gDate").value.trim();
+  const url=document.getElementById("gUrl").value.trim();
+  if(!name){alert("試合名を入力してください。");return;}
+  const vid=extractId(url);
+  if(!vid){alert("YouTube の URL を確認してください。");return;}
+  const g={id:"g_"+Date.now(),name,date,videoId:vid,tagTypes:DEFAULT_TAGTYPES(),tags:[]};
+  games.unshift(g);closeGameModal();renderGames();selectGame(g.id);
+}
+function selectGame(id){
+  currentGameId=id;activeFilter=null;
+  const g=curGame();if(!g)return;
+  const ct=document.getElementById("curTitle");
+  ct.textContent=g.name;ct.style.color="var(--txt)";ct.style.fontWeight="800";
+  document.getElementById("curDate").textContent=g.date||"";
+  document.getElementById("tagdeck").classList.remove("disabled");
+  mountVideo(g.videoId);
+  renderGames();renderTagButtons();renderFilters();renderTags();
+}
+function delGame(id){
+  const g=games.find(x=>x.id===id);if(!g)return;
+  if(!confirm("試合「"+g.name+"」を削除しますか？タグもすべて消えます。"))return;
+  games=games.filter(x=>x.id!==id);
+  if(currentGameId===id){
+    currentGameId=null;
+    const ct=document.getElementById("curTitle");
+    ct.textContent="試合を選択してください";ct.style.color="var(--txt-dim)";ct.style.fontWeight="600";
+    document.getElementById("curDate").textContent="";
+    document.getElementById("tagdeck").classList.add("disabled");
+    document.getElementById("playerEmpty").style.display="grid";
+    if(player&&player.stopVideo)player.stopVideo();
+  }
+  renderGames();renderTagButtons();renderFilters();renderTags();
+}
+function renderGames(){
+  const box=document.getElementById("gamesList");
+  if(games.length===0){box.innerHTML='<div class="games-empty">まだ試合がありません。<br>右上の ＋ から追加してください。</div>';return;}
+  box.innerHTML="";
+  games.forEach(g=>{
+    const c=document.createElement("div");
+    c.className="game-card"+(g.id===currentGameId?" active":"");
+    c.innerHTML='<div class="gname">'+escapeHtml(g.name)+'</div>'+
+      '<div class="gmeta"><span>'+escapeHtml(g.date||"日付なし")+'</span><span>'+g.tags.length+' タグ</span></div>'+
+      '<span class="gdel" title="削除">×</span>';
+    c.onclick=(e)=>{if(e.target.classList.contains("gdel"))return;selectGame(g.id);};
+    c.querySelector(".gdel").onclick=(e)=>{e.stopPropagation();delGame(g.id);};
+    box.appendChild(c);
+  });
+}
+function addTag(typeId){
+  const g=curGame();if(!g)return;
+  if(!playerReady()){alert("動画の読み込みを待ってください。");return;}
+  const t=player.getCurrentTime();
+  g.tags.push({id:"tag_"+Date.now()+"_"+Math.random().toString(36).slice(2,6),typeId,time:t,note:""});
+  g.tags.sort((a,b)=>a.time-b.time);renderTags();renderGames();
+}
+function seekTo(time){if(player&&player.seekTo){player.seekTo(time,true);player.playVideo();}}
+function delTag(id){const g=curGame();if(!g)return;g.tags=g.tags.filter(t=>t.id!==id);renderTags();renderGames();}
+function setNote(id,val){const g=curGame();if(!g)return;const t=g.tags.find(x=>x.id===id);if(t)t.note=val;}
+function typeById(id){const g=curGame();if(!g)return{name:"?",color:"#888"};return g.tagTypes.find(t=>t.id===id)||{name:"?",color:"#888"};}
+function renderTagButtons(){
+  const box=document.getElementById("tagButtons");box.innerHTML="";
+  const g=curGame();if(!g)return;
+  g.tagTypes.forEach((t,i)=>{
+    const b=document.createElement("button");b.className="tag-btn";
+    b.innerHTML='<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
+      (i<9?'<span style="color:var(--txt-dim);font-size:11px;margin-left:3px">'+(i+1)+'</span>':"")+
+      '<span class="x" title="削除">×</span>';
+    b.querySelector(".x").onclick=(e)=>{e.stopPropagation();if(confirm("タグ「"+t.name+"」を削除しますか？")){g.tagTypes=g.tagTypes.filter(x=>x.id!==t.id);if(activeFilter===t.id)activeFilter=null;renderTagButtons();renderFilters();renderTags();}};
+    b.onclick=()=>addTag(t.id);box.appendChild(b);
+  });
+  const add=document.createElement("button");add.className="add-tag";add.textContent="＋ タグを追加";add.onclick=openTagModal;box.appendChild(add);
+}
+function renderFilters(){
+  const box=document.getElementById("filters");box.innerHTML="";
+  const g=curGame();if(!g)return;
+  const all=document.createElement("button");all.className="filter-chip"+(activeFilter===null?" active":"");all.textContent="すべて";
+  all.onclick=()=>{activeFilter=null;renderFilters();renderTags();};box.appendChild(all);
+  g.tagTypes.forEach(t=>{
+    const c=document.createElement("button");c.className="filter-chip"+(activeFilter===t.id?" active":"");
+    c.innerHTML='<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name);
+    c.onclick=()=>{activeFilter=t.id;renderFilters();renderTags();};box.appendChild(c);
+  });
+}
+function renderTags(){
+  const list=document.getElementById("tagList");const g=curGame();
+  if(!g){list.innerHTML='<div class="empty-list">試合を選ぶとタグが表示されます。</div>';document.getElementById("countPill").textContent="0 件";return;}
+  const shown=g.tags.filter(t=>activeFilter===null||t.typeId===activeFilter);
+  document.getElementById("countPill").textContent=shown.length+" 件";
+  if(shown.length===0){list.innerHTML='<div class="empty-list">'+(g.tags.length===0?"まだタグがありません。<br>動画を再生して、プレーにタグを打ってみましょう。":"このタグの記録はありません。")+'</div>';return;}
+  list.innerHTML="";
+  shown.forEach(t=>{
+    const ty=typeById(t.typeId);
+    const item=document.createElement("div");item.className="tag-item";item.style.borderLeftColor=ty.color;
+    item.innerHTML='<div class="time">'+fmt(t.time)+'</div><div class="body">'+
+      '<div class="label"><span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+'</div>'+
+      (t.note?'<div class="note">'+escapeHtml(t.note)+'</div>':"")+
+      '<input class="note-input" placeholder="メモを追加…" value="'+escapeAttr(t.note)+'"></div>'+
+      '<div class="del" title="削除">🗑</div>';
+    item.onclick=(e)=>{if(e.target.classList.contains("note-input")||e.target.classList.contains("del"))return;seekTo(t.time);};
+    const ni=item.querySelector(".note-input");ni.onclick=(e)=>e.stopPropagation();ni.oninput=(e)=>setNote(t.id,e.target.value);
+    item.querySelector(".del").onclick=(e)=>{e.stopPropagation();delTag(t.id);};
+    list.appendChild(item);
+  });
+}
+function escapeHtml(s){return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+function escapeAttr(s){return (s||"").replace(/"/g,"&quot;");}
+function openTagModal(){if(!curGame())return;document.getElementById("newTagName").value="";selectedColor=PALETTE[0];renderSwatches();document.getElementById("tagModalBg").classList.add("show");document.getElementById("newTagName").focus();}
+function closeTagModal(){document.getElementById("tagModalBg").classList.remove("show");}
+function renderSwatches(){const box=document.getElementById("swatches");box.innerHTML="";PALETTE.forEach(c=>{const s=document.createElement("div");s.className="swatch"+(c===selectedColor?" sel":"");s.style.background=c;s.onclick=()=>{selectedColor=c;renderSwatches();};box.appendChild(s);});}
+function createTagType(){const g=curGame();if(!g)return;const name=document.getElementById("newTagName").value.trim();if(!name){alert("タグ名を入力してください。");return;}g.tagTypes.push({id:"t_"+Date.now(),name,color:selectedColor});closeTagModal();renderTagButtons();renderFilters();}
+document.getElementById("addGameBtn").onclick=openGameModal;
+document.getElementById("createGame").onclick=createGame;
+document.getElementById("cancelGame").onclick=closeGameModal;
+document.getElementById("gameModalBg").onclick=(e)=>{if(e.target.id==="gameModalBg")closeGameModal();};
+document.getElementById("gUrl").addEventListener("keydown",e=>{if(e.key==="Enter")createGame();});
+document.getElementById("createTag").onclick=createTagType;
+document.getElementById("cancelTag").onclick=closeTagModal;
+document.getElementById("newTagName").addEventListener("keydown",e=>{if(e.key==="Enter")createTagType();});
+document.getElementById("tagModalBg").onclick=(e)=>{if(e.target.id==="tagModalBg")closeTagModal();};
+function skip(sec){if(player&&player.getCurrentTime&&player.seekTo){const t=Math.max(0,player.getCurrentTime()+sec);player.seekTo(t,true);}}
+function togglePlay(){if(!player||!player.getPlayerState)return;const s=player.getPlayerState();if(s===1){player.pauseVideo();}else{player.playVideo();}}
+document.getElementById("back5").onclick=()=>skip(-5);
+document.getElementById("fwd5").onclick=()=>skip(5);
+document.getElementById("playpause").onclick=togglePlay;
+document.addEventListener("keydown",e=>{
+  if(document.querySelector(".modal-bg.show"))return;
+  if(e.target.tagName==="INPUT")return;
+  const g=curGame();if(!g)return;
+  if(e.key===","){e.preventDefault();skip(-5);return;}
+  if(e.key==="."){e.preventDefault();skip(5);return;}
+  if(e.code==="Space"){e.preventDefault();togglePlay();return;}
+  const n=parseInt(e.key);
+  if(n>=1&&n<=9&&g.tagTypes[n-1]){e.preventDefault();addTag(g.tagTypes[n-1].id);}
+});
+renderGames();renderTagButtons();renderFilters();renderTags();
+</script>
+</body>
+</html>
