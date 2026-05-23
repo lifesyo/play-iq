@@ -49,6 +49,15 @@
   .btn:hover{filter:brightness(1.1);}
   .btn:active{transform:scale(.97);}
   .btn.ghost{background:var(--panel-2);color:var(--txt);border:1px solid var(--line);}
+  .auth{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  .sync-state{font-size:11.5px;color:var(--txt-dim);font-weight:600;white-space:nowrap;transition:color .2s;}
+  .sync-state.saving{color:var(--warn);}
+  .sync-state.saved{color:var(--ok);}
+  .user-chip{display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:20px;padding:4px 6px 4px 10px;}
+  .user-chip img{width:24px;height:24px;border-radius:50%;}
+  .user-chip span{font-size:12.5px;font-weight:700;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .user-chip .logout{background:none;border:none;color:var(--txt-dim);cursor:pointer;font-size:15px;padding:2px 4px;border-radius:6px;transition:.12s;}
+  .user-chip .logout:hover{color:var(--accent);}
   .games{grid-area:games;border-right:1px solid var(--line);background:rgba(20,25,35,.5);display:flex;flex-direction:column;overflow:hidden;}
   .games-head{padding:15px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
   .games-head h2{font-size:13px;font-weight:700;color:var(--txt-dim);letter-spacing:.5px;text-transform:uppercase;}
@@ -143,6 +152,15 @@
       <div class="title" id="curTitle" style="color:var(--txt-dim);font-weight:600">試合を選択してください</div>
       <div class="date" id="curDate"></div>
     </div>
+    <div class="auth" id="authBox">
+      <span class="sync-state" id="syncState"></span>
+      <button class="btn ghost" id="loginBtn">Googleでログイン</button>
+      <div class="user-chip" id="userChip" style="display:none">
+        <img id="userPhoto" alt="">
+        <span id="userName"></span>
+        <button class="logout" id="logoutBtn" title="ログアウト">⏻</button>
+      </div>
+    </div>
   </header>
   <div class="games">
     <div class="games-head">
@@ -214,6 +232,57 @@
   </div>
 </div>
 <script src="https://www.youtube.com/iframe_api"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, browserLocalPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBZrWXMKt9avJmziERjE1HEkDtvNzNxlu0",
+  authDomain: "play-iq-989a6.firebaseapp.com",
+  projectId: "play-iq-989a6",
+  storageBucket: "play-iq-989a6.firebasestorage.app",
+  messagingSenderId: "665436692963",
+  appId: "1:665436692963:web:9b84aa1a54d3d3fd8000d6"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+setPersistence(auth, browserLocalPersistence);
+
+let currentUid = null;
+
+// expose bridge to the main (non-module) script
+window.PlayIQ = {
+  login(){
+    const provider = new GoogleAuthProvider();
+    signInWithPopup(auth, provider).catch(e=>{ console.error(e); alert("ログインに失敗しました: "+e.message); });
+  },
+  logout(){ signOut(auth); },
+  async save(data){
+    if(!currentUid) return;
+    try{
+      await setDoc(doc(db, "playiq_data", currentUid), {games:data, updatedAt:Date.now()});
+      window.onSyncSaved && window.onSyncSaved();
+    }catch(e){ console.error("save failed", e); window.onSyncError && window.onSyncError(); }
+  }
+};
+
+onAuthStateChanged(auth, async (user)=>{
+  if(user){
+    currentUid = user.uid;
+    window.onAuthIn && window.onAuthIn({name:user.displayName||"ユーザー", photo:user.photoURL||""});
+    try{
+      const snap = await getDoc(doc(db, "playiq_data", currentUid));
+      const remote = snap.exists() ? (snap.data().games||[]) : [];
+      window.onDataLoaded && window.onDataLoaded(remote);
+    }catch(e){ console.error("load failed", e); window.onDataLoaded && window.onDataLoaded([]); }
+  }else{
+    currentUid = null;
+    window.onAuthOut && window.onAuthOut();
+  }
+});
+</script>
 <script>
 const PALETTE=["#ff5a3c","#3ca5ff","#36d399","#fbbd23","#a78bfa","#f471b5","#2dd4bf","#fb923c"];
 const DEFAULT_TAGTYPES=()=>[
@@ -244,7 +313,7 @@ function createGame(){
   const vid=extractId(url);
   if(!vid){alert("YouTube の URL を確認してください。");return;}
   const g={id:"g_"+Date.now(),name,date,videoId:vid,tagTypes:DEFAULT_TAGTYPES(),tags:[]};
-  games.unshift(g);closeGameModal();renderGames();selectGame(g.id);
+  games.unshift(g);closeGameModal();renderGames();selectGame(g.id);scheduleSave();
 }
 function selectGame(id){
   currentGameId=id;activeFilter=null;
@@ -269,7 +338,7 @@ function delGame(id){
     document.getElementById("playerEmpty").style.display="grid";
     if(player&&player.stopVideo)player.stopVideo();
   }
-  renderGames();renderTagButtons();renderFilters();renderTags();
+  renderGames();renderTagButtons();renderFilters();renderTags();scheduleSave();
 }
 function renderGames(){
   const box=document.getElementById("gamesList");
@@ -291,11 +360,11 @@ function addTag(typeId){
   if(!playerReady()){alert("動画の読み込みを待ってください。");return;}
   const t=player.getCurrentTime();
   g.tags.push({id:"tag_"+Date.now()+"_"+Math.random().toString(36).slice(2,6),typeId,time:t,note:""});
-  g.tags.sort((a,b)=>a.time-b.time);renderTags();renderGames();
+  g.tags.sort((a,b)=>a.time-b.time);renderTags();renderGames();scheduleSave();
 }
 function seekTo(time){if(player&&player.seekTo){player.seekTo(time,true);player.playVideo();}}
-function delTag(id){const g=curGame();if(!g)return;g.tags=g.tags.filter(t=>t.id!==id);renderTags();renderGames();}
-function setNote(id,val){const g=curGame();if(!g)return;const t=g.tags.find(x=>x.id===id);if(t)t.note=val;}
+function delTag(id){const g=curGame();if(!g)return;g.tags=g.tags.filter(t=>t.id!==id);renderTags();renderGames();scheduleSave();}
+function setNote(id,val){const g=curGame();if(!g)return;const t=g.tags.find(x=>x.id===id);if(t)t.note=val;scheduleSave();}
 function typeById(id){const g=curGame();if(!g)return{name:"?",color:"#888"};return g.tagTypes.find(t=>t.id===id)||{name:"?",color:"#888"};}
 function renderTagButtons(){
   const box=document.getElementById("tagButtons");box.innerHTML="";
@@ -305,7 +374,7 @@ function renderTagButtons(){
     b.innerHTML='<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
       (i<9?'<span style="color:var(--txt-dim);font-size:11px;margin-left:3px">'+(i+1)+'</span>':"")+
       '<span class="x" title="削除">×</span>';
-    b.querySelector(".x").onclick=(e)=>{e.stopPropagation();if(confirm("タグ「"+t.name+"」を削除しますか？")){g.tagTypes=g.tagTypes.filter(x=>x.id!==t.id);if(activeFilter===t.id)activeFilter=null;renderTagButtons();renderFilters();renderTags();}};
+    b.querySelector(".x").onclick=(e)=>{e.stopPropagation();if(confirm("タグ「"+t.name+"」を削除しますか？")){g.tagTypes=g.tagTypes.filter(x=>x.id!==t.id);if(activeFilter===t.id)activeFilter=null;renderTagButtons();renderFilters();renderTags();scheduleSave();}};
     b.onclick=()=>addTag(t.id);box.appendChild(b);
   });
   const add=document.createElement("button");add.className="add-tag";add.textContent="＋ タグを追加";add.onclick=openTagModal;box.appendChild(add);
@@ -347,7 +416,7 @@ function escapeAttr(s){return (s||"").replace(/"/g,"&quot;");}
 function openTagModal(){if(!curGame())return;document.getElementById("newTagName").value="";selectedColor=PALETTE[0];renderSwatches();document.getElementById("tagModalBg").classList.add("show");document.getElementById("newTagName").focus();}
 function closeTagModal(){document.getElementById("tagModalBg").classList.remove("show");}
 function renderSwatches(){const box=document.getElementById("swatches");box.innerHTML="";PALETTE.forEach(c=>{const s=document.createElement("div");s.className="swatch"+(c===selectedColor?" sel":"");s.style.background=c;s.onclick=()=>{selectedColor=c;renderSwatches();};box.appendChild(s);});}
-function createTagType(){const g=curGame();if(!g)return;const name=document.getElementById("newTagName").value.trim();if(!name){alert("タグ名を入力してください。");return;}g.tagTypes.push({id:"t_"+Date.now(),name,color:selectedColor});closeTagModal();renderTagButtons();renderFilters();}
+function createTagType(){const g=curGame();if(!g)return;const name=document.getElementById("newTagName").value.trim();if(!name){alert("タグ名を入力してください。");return;}g.tagTypes.push({id:"t_"+Date.now(),name,color:selectedColor});closeTagModal();renderTagButtons();renderFilters();scheduleSave();}
 document.getElementById("addGameBtn").onclick=openGameModal;
 document.getElementById("createGame").onclick=createGame;
 document.getElementById("cancelGame").onclick=closeGameModal;
@@ -372,6 +441,51 @@ document.addEventListener("keydown",e=>{
   const n=parseInt(e.key);
   if(n>=1&&n<=9&&g.tagTypes[n-1]){e.preventDefault();addTag(g.tagTypes[n-1].id);}
 });
+/* ---------- sync (Firebase bridge) ---------- */
+let saveTimer=null, signedIn=false;
+function scheduleSave(){
+  if(!signedIn||!window.PlayIQ)return;
+  setSyncState("saving");
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{ window.PlayIQ.save(games); }, 1200);
+}
+function setSyncState(s){
+  const el=document.getElementById("syncState");
+  if(!signedIn){el.textContent="";el.className="sync-state";return;}
+  if(s==="saving"){el.textContent="保存中…";el.className="sync-state saving";}
+  else if(s==="saved"){el.textContent="✓ 同期済み";el.className="sync-state saved";}
+  else if(s==="error"){el.textContent="⚠ 保存失敗";el.className="sync-state";}
+}
+window.onAuthIn=(u)=>{
+  signedIn=true;
+  document.getElementById("loginBtn").style.display="none";
+  document.getElementById("userChip").style.display="flex";
+  document.getElementById("userName").textContent=u.name;
+  const ph=document.getElementById("userPhoto");
+  if(u.photo){ph.src=u.photo;ph.style.display="";}else{ph.style.display="none";}
+};
+window.onAuthOut=()=>{
+  signedIn=false;
+  document.getElementById("loginBtn").style.display="";
+  document.getElementById("userChip").style.display="none";
+  setSyncState("");
+};
+window.onDataLoaded=(remote)=>{
+  if(Array.isArray(remote)&&remote.length>0){ games=remote; }
+  currentGameId=null;
+  const ct=document.getElementById("curTitle");
+  ct.textContent="試合を選択してください";ct.style.color="var(--txt-dim)";ct.style.fontWeight="600";
+  document.getElementById("curDate").textContent="";
+  document.getElementById("tagdeck").classList.add("disabled");
+  document.getElementById("playerEmpty").style.display="grid";
+  renderGames();renderTagButtons();renderFilters();renderTags();
+  setSyncState("saved");
+};
+window.onSyncSaved=()=>setSyncState("saved");
+window.onSyncError=()=>setSyncState("error");
+document.getElementById("loginBtn").onclick=()=>window.PlayIQ&&window.PlayIQ.login();
+document.getElementById("logoutBtn").onclick=()=>window.PlayIQ&&window.PlayIQ.logout();
+
 renderGames();renderTagButtons();renderFilters();renderTags();
 </script>
 </body>
