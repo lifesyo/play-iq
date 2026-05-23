@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Play IQ — タグ付けプレイヤー</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b0e14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Play IQ">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root{
     --bg:#0b0e14;--panel:#141923;--panel-2:#1b2230;--line:#27303f;
@@ -89,6 +95,7 @@
   .tp-btn{flex:1;border:1px solid var(--line);background:var(--panel-2);color:var(--txt);cursor:pointer;padding:10px;border-radius:11px;font-weight:700;font-size:14px;transition:transform .1s,filter .15s;font-variant-numeric:tabular-nums;}
   .tp-btn:hover{filter:brightness(1.15);}
   .tp-btn:active{transform:scale(.96);}
+  .tp-btn.speed{flex:0 0 64px;color:var(--accent-2);}
   .now{font-variant-numeric:tabular-nums;font-size:13px;color:var(--txt-dim);font-weight:600;}
   .now b{color:var(--accent);font-size:15px;}
   .tag-buttons{display:flex;flex-wrap:wrap;gap:9px;}
@@ -107,6 +114,15 @@
   .side-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:12px;}
   .side-head .row{display:flex;align-items:center;justify-content:space-between;}
   .side-head h2{font-size:15px;font-weight:800;}
+  .summary{display:flex;flex-wrap:wrap;gap:6px;}
+  .sum-chip{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:7px;}
+  .sum-chip .dot{width:8px;height:8px;border-radius:50%;}
+  .sum-chip b{color:var(--txt);font-variant-numeric:tabular-nums;}
+  .playall-bar{display:flex;align-items:center;gap:10px;}
+  .playall-btn{background:var(--accent);color:#fff;border:none;cursor:pointer;padding:8px 14px;border-radius:9px;font-weight:700;font-size:13px;transition:.12s;}
+  .playall-btn:hover{filter:brightness(1.1);}
+  .playall-btn.playing{background:var(--warn);color:#1a1205;}
+  .playall-info{font-size:11.5px;color:var(--txt-dim);font-weight:600;}
   .count-pill{background:var(--panel-2);border:1px solid var(--line);border-radius:20px;padding:3px 11px;font-size:12px;font-weight:700;color:var(--txt-dim);}
   .filters{display:flex;flex-wrap:wrap;gap:6px;}
   .filter-chip{border:1px solid var(--line);background:var(--panel);color:var(--txt-dim);cursor:pointer;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;transition:.15s;}
@@ -187,6 +203,7 @@
         <button class="tp-btn" id="back5">⏪ 5秒</button>
         <button class="tp-btn" id="playpause">▶ / ⏸</button>
         <button class="tp-btn" id="fwd5">5秒 ⏩</button>
+        <button class="tp-btn speed" id="speedBtn">1x</button>
       </div>
       <div class="tag-buttons" id="tagButtons"></div>
       <div class="hint">プレーが起きた瞬間にタグを押すと、その再生位置が記録されます。
@@ -196,7 +213,12 @@
   <aside>
     <div class="side-head">
       <div class="row"><h2>タグ一覧</h2><span class="count-pill" id="countPill">0 件</span></div>
+      <div class="summary" id="summary"></div>
       <div class="filters" id="filters"></div>
+      <div class="playall-bar" id="playallBar" style="display:none">
+        <button class="playall-btn" id="playAllBtn">▶ 連続再生</button>
+        <span class="playall-info" id="playallInfo"></span>
+      </div>
     </div>
     <div class="tag-list" id="tagList">
       <div class="empty-list">試合を選ぶとタグが表示されます。</div>
@@ -362,7 +384,7 @@ function addTag(typeId){
   g.tags.push({id:"tag_"+Date.now()+"_"+Math.random().toString(36).slice(2,6),typeId,time:t,note:""});
   g.tags.sort((a,b)=>a.time-b.time);renderTags();renderGames();scheduleSave();
 }
-function seekTo(time){if(player&&player.seekTo){player.seekTo(time,true);player.playVideo();}}
+function seekTo(time){if(playAll.on)stopPlayAll();if(player&&player.seekTo){player.seekTo(time,true);player.playVideo();}}
 function delTag(id){const g=curGame();if(!g)return;g.tags=g.tags.filter(t=>t.id!==id);renderTags();renderGames();scheduleSave();}
 function setNote(id,val){const g=curGame();if(!g)return;const t=g.tags.find(x=>x.id===id);if(t)t.note=val;scheduleSave();}
 function typeById(id){const g=curGame();if(!g)return{name:"?",color:"#888"};return g.tagTypes.find(t=>t.id===id)||{name:"?",color:"#888"};}
@@ -390,11 +412,27 @@ function renderFilters(){
     c.onclick=()=>{activeFilter=t.id;renderFilters();renderTags();};box.appendChild(c);
   });
 }
+function renderSummary(){
+  const box=document.getElementById("summary");const g=curGame();
+  if(!g||g.tags.length===0){box.innerHTML="";return;}
+  const counts={};
+  g.tags.forEach(t=>{counts[t.typeId]=(counts[t.typeId]||0)+1;});
+  box.innerHTML="";
+  g.tagTypes.forEach(ty=>{
+    const n=counts[ty.id]||0;if(n===0)return;
+    const chip=document.createElement("div");chip.className="sum-chip";
+    chip.innerHTML='<span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+' <b>'+n+'</b>';
+    box.appendChild(chip);
+  });
+}
 function renderTags(){
   const list=document.getElementById("tagList");const g=curGame();
-  if(!g){list.innerHTML='<div class="empty-list">試合を選ぶとタグが表示されます。</div>';document.getElementById("countPill").textContent="0 件";return;}
+  const bar=document.getElementById("playallBar");
+  if(!g){list.innerHTML='<div class="empty-list">試合を選ぶとタグが表示されます。</div>';document.getElementById("countPill").textContent="0 件";document.getElementById("summary").innerHTML="";bar.style.display="none";return;}
+  renderSummary();
   const shown=g.tags.filter(t=>activeFilter===null||t.typeId===activeFilter);
   document.getElementById("countPill").textContent=shown.length+" 件";
+  bar.style.display=shown.length>0?"flex":"none";
   if(shown.length===0){list.innerHTML='<div class="empty-list">'+(g.tags.length===0?"まだタグがありません。<br>動画を再生して、プレーにタグを打ってみましょう。":"このタグの記録はありません。")+'</div>';return;}
   list.innerHTML="";
   shown.forEach(t=>{
@@ -428,9 +466,54 @@ document.getElementById("newTagName").addEventListener("keydown",e=>{if(e.key===
 document.getElementById("tagModalBg").onclick=(e)=>{if(e.target.id==="tagModalBg")closeTagModal();};
 function skip(sec){if(player&&player.getCurrentTime&&player.seekTo){const t=Math.max(0,player.getCurrentTime()+sec);player.seekTo(t,true);}}
 function togglePlay(){if(!player||!player.getPlayerState)return;const s=player.getPlayerState();if(s===1){player.pauseVideo();}else{player.playVideo();}}
+
+/* speed control */
+const SPEEDS=[0.5,1,1.25,1.5,2];
+let speedIdx=1;
+function cycleSpeed(){
+  speedIdx=(speedIdx+1)%SPEEDS.length;
+  const r=SPEEDS[speedIdx];
+  if(player&&player.setPlaybackRate)player.setPlaybackRate(r);
+  document.getElementById("speedBtn").textContent=r+"x";
+}
+
+/* play-all (consecutive playback of filtered tags) */
+let playAll={on:false,queue:[],idx:0,timer:null};
+const CLIP_LEAD=3, CLIP_LEN=8; // 各タグの3秒前から約8秒再生
+function startPlayAll(){
+  const g=curGame();if(!g||!playerReady())return;
+  const list=g.tags.filter(t=>activeFilter===null||t.typeId===activeFilter);
+  if(list.length===0)return;
+  playAll.on=true;playAll.queue=list;playAll.idx=0;
+  updatePlayAllBtn();
+  playClip(0);
+}
+function stopPlayAll(){
+  playAll.on=false;clearTimeout(playAll.timer);
+  updatePlayAllBtn();
+}
+function playClip(i){
+  if(!playAll.on)return;
+  if(i>=playAll.queue.length){stopPlayAll();return;}
+  playAll.idx=i;
+  const t=playAll.queue[i];
+  const start=Math.max(0,t.time-CLIP_LEAD);
+  player.seekTo(start,true);player.playVideo();
+  document.getElementById("playallInfo").textContent=(i+1)+" / "+playAll.queue.length;
+  clearTimeout(playAll.timer);
+  playAll.timer=setTimeout(()=>playClip(i+1), CLIP_LEN*1000);
+}
+function updatePlayAllBtn(){
+  const btn=document.getElementById("playAllBtn");
+  if(playAll.on){btn.textContent="■ 停止";btn.classList.add("playing");}
+  else{btn.textContent="▶ 連続再生";btn.classList.remove("playing");document.getElementById("playallInfo").textContent="";}
+}
+
 document.getElementById("back5").onclick=()=>skip(-5);
 document.getElementById("fwd5").onclick=()=>skip(5);
 document.getElementById("playpause").onclick=togglePlay;
+document.getElementById("speedBtn").onclick=cycleSpeed;
+document.getElementById("playAllBtn").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
 document.addEventListener("keydown",e=>{
   if(document.querySelector(".modal-bg.show"))return;
   if(e.target.tagName==="INPUT")return;
@@ -487,6 +570,11 @@ document.getElementById("loginBtn").onclick=()=>window.PlayIQ&&window.PlayIQ.log
 document.getElementById("logoutBtn").onclick=()=>window.PlayIQ&&window.PlayIQ.logout();
 
 renderGames();renderTagButtons();renderFilters();renderTags();
+
+/* PWA: register service worker */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(e=>console.log("SW登録失敗",e)); });
+}
 </script>
 </body>
 </html>
