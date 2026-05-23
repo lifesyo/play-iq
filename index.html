@@ -108,6 +108,14 @@
   .tag-btn .x:hover{opacity:1;color:var(--accent);}
   .add-tag{border:1px dashed var(--line);background:transparent;color:var(--txt-dim);cursor:pointer;padding:11px 15px;border-radius:11px;font-weight:700;font-size:14px;transition:border-color .15s,color .15s;}
   .add-tag:hover{border-color:var(--accent-2);color:var(--accent-2);}
+  .tag-btn.pending{border-color:var(--accent);background:rgba(255,90,60,.16);animation:pulse 1.1s ease-in-out infinite;}
+  .tag-btn.pending .rec{color:var(--accent);font-size:12px;font-weight:800;}
+  .tag-btn.blocked{opacity:.35;pointer-events:none;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,90,60,.4);}50%{box-shadow:0 0 0 5px rgba(255,90,60,0);}}
+  .cancel-pending{border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;padding:11px 15px;border-radius:11px;font-weight:700;font-size:14px;transition:.15s;}
+  .cancel-pending:hover{background:rgba(255,90,60,.12);}
+  .tag-item .time .dash{margin:0 4px;color:var(--txt-dim);font-weight:600;}
+  .tag-item .time .dur{display:block;font-size:10.5px;color:var(--txt-dim);font-weight:600;margin-top:2px;}
   .hint{font-size:11.5px;color:var(--txt-dim);line-height:1.6;}
   .hint kbd{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11px;font-family:inherit;color:var(--txt);}
   aside{grid-area:side;border-left:1px solid var(--line);background:rgba(20,25,35,.5);display:flex;flex-direction:column;overflow:hidden;}
@@ -134,7 +142,7 @@
   .empty-list{text-align:center;color:var(--txt-dim);font-size:13px;padding:50px 20px;line-height:1.9;}
   .tag-item{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 13px;cursor:pointer;transition:.15s;display:flex;gap:11px;align-items:flex-start;border-left-width:3px;}
   .tag-item:hover{background:var(--panel-2);transform:translateX(-2px);}
-  .tag-item .time{font-variant-numeric:tabular-nums;font-weight:800;font-size:14px;color:var(--accent-2);flex-shrink:0;min-width:52px;}
+  .tag-item .time{font-variant-numeric:tabular-nums;font-weight:800;font-size:13px;color:var(--accent-2);flex-shrink:0;min-width:64px;}
   .tag-item .body{flex:1;min-width:0;}
   .tag-item .label{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:7px;}
   .tag-item .label .dot{width:9px;height:9px;border-radius:50%;}
@@ -206,8 +214,7 @@
         <button class="tp-btn speed" id="speedBtn">1x</button>
       </div>
       <div class="tag-buttons" id="tagButtons"></div>
-      <div class="hint">プレーが起きた瞬間にタグを押すと、その再生位置が記録されます。
-      <kbd>1</kbd>〜<kbd>9</kbd> でタグ打ち、<kbd>,</kbd>／<kbd>.</kbd> で5秒戻る／進む（タグデッキを一度クリックしてから）。タグの種類は試合ごとに別々に管理されます。</div>
+      <div class="hint">タグは<b>2回押し</b>で区間を記録します。プレー開始時に1回押す→終了時にもう一度同じタグを押すと、その区間が記録されます。<kbd>1</kbd>〜<kbd>9</kbd>でタグ打ち、<kbd>,</kbd>／<kbd>.</kbd>で5秒戻る／進む。連続再生はこの区間どおりに再生されます。</div>
     </div>
   </main>
   <aside>
@@ -377,29 +384,61 @@ function renderGames(){
     box.appendChild(c);
   });
 }
+let pending=null; // {typeId, start} 計測中のタグ
 function addTag(typeId){
   const g=curGame();if(!g)return;
   if(!playerReady()){alert("動画の読み込みを待ってください。");return;}
   const t=player.getCurrentTime();
-  g.tags.push({id:"tag_"+Date.now()+"_"+Math.random().toString(36).slice(2,6),typeId,time:t,note:""});
-  g.tags.sort((a,b)=>a.time-b.time);renderTags();renderGames();scheduleSave();
+  if(pending && pending.typeId===typeId){
+    // 2回目：終了点を記録して確定
+    let start=pending.start, end=t;
+    if(end<start){const tmp=start;start=end;end=tmp;} // 逆順なら入れ替え
+    if(end-start<0.3) end=start+0.3; // 最低長を確保
+    g.tags.push({id:"tag_"+Date.now()+"_"+Math.random().toString(36).slice(2,6),typeId,start,end,note:""});
+    g.tags.sort((a,b)=>a.start-b.start);
+    pending=null;
+    renderTagButtons();renderTags();renderGames();scheduleSave();
+  }else if(pending && pending.typeId!==typeId){
+    // 別のタグが計測中：無視（1つずつ区間を作る）
+    return;
+  }else{
+    // 1回目：開始点を記録して計測開始
+    pending={typeId,start:t};
+    renderTagButtons();
+  }
 }
+function cancelPending(){ pending=null; renderTagButtons(); }
 function seekTo(time){if(playAll.on)stopPlayAll();if(player&&player.seekTo){player.seekTo(time,true);player.playVideo();}}
 function delTag(id){const g=curGame();if(!g)return;g.tags=g.tags.filter(t=>t.id!==id);renderTags();renderGames();scheduleSave();}
 function setNote(id,val){const g=curGame();if(!g)return;const t=g.tags.find(x=>x.id===id);if(t)t.note=val;scheduleSave();}
 function typeById(id){const g=curGame();if(!g)return{name:"?",color:"#888"};return g.tagTypes.find(t=>t.id===id)||{name:"?",color:"#888"};}
+// 旧タグ(time)と新タグ(start/end)の両方から開始・終了を取り出す
+function tagStart(t){return t.start!==undefined?t.start:t.time;}
+function tagEnd(t){return t.end!==undefined?t.end:undefined;}
 function renderTagButtons(){
   const box=document.getElementById("tagButtons");box.innerHTML="";
   const g=curGame();if(!g)return;
   g.tagTypes.forEach((t,i)=>{
-    const b=document.createElement("button");b.className="tag-btn";
-    b.innerHTML='<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
-      (i<9?'<span style="color:var(--txt-dim);font-size:11px;margin-left:3px">'+(i+1)+'</span>':"")+
-      '<span class="x" title="削除">×</span>';
-    b.querySelector(".x").onclick=(e)=>{e.stopPropagation();if(confirm("タグ「"+t.name+"」を削除しますか？")){g.tagTypes=g.tagTypes.filter(x=>x.id!==t.id);if(activeFilter===t.id)activeFilter=null;renderTagButtons();renderFilters();renderTags();scheduleSave();}};
+    const b=document.createElement("button");
+    const isPending=pending&&pending.typeId===t.id;
+    const isBlocked=pending&&pending.typeId!==t.id;
+    b.className="tag-btn"+(isPending?" pending":"")+(isBlocked?" blocked":"");
+    if(isPending){
+      b.innerHTML='<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
+        ' <span class="rec">● 終了を押す</span>';
+    }else{
+      b.innerHTML='<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
+        (i<9?'<span style="color:var(--txt-dim);font-size:11px;margin-left:3px">'+(i+1)+'</span>':"")+
+        '<span class="x" title="削除">×</span>';
+      b.querySelector(".x").onclick=(e)=>{e.stopPropagation();if(confirm("タグ「"+t.name+"」を削除しますか？")){g.tagTypes=g.tagTypes.filter(x=>x.id!==t.id);if(activeFilter===t.id)activeFilter=null;renderTagButtons();renderFilters();renderTags();scheduleSave();}};
+    }
     b.onclick=()=>addTag(t.id);box.appendChild(b);
   });
-  const add=document.createElement("button");add.className="add-tag";add.textContent="＋ タグを追加";add.onclick=openTagModal;box.appendChild(add);
+  if(pending){
+    const cancel=document.createElement("button");cancel.className="cancel-pending";cancel.textContent="✕ 計測キャンセル";cancel.onclick=cancelPending;box.appendChild(cancel);
+  }else{
+    const add=document.createElement("button");add.className="add-tag";add.textContent="＋ タグを追加";add.onclick=openTagModal;box.appendChild(add);
+  }
 }
 function renderFilters(){
   const box=document.getElementById("filters");box.innerHTML="";
@@ -430,22 +469,25 @@ function renderTags(){
   const bar=document.getElementById("playallBar");
   if(!g){list.innerHTML='<div class="empty-list">試合を選ぶとタグが表示されます。</div>';document.getElementById("countPill").textContent="0 件";document.getElementById("summary").innerHTML="";bar.style.display="none";return;}
   renderSummary();
-  const shown=g.tags.filter(t=>activeFilter===null||t.typeId===activeFilter);
+  const shown=g.tags.filter(t=>activeFilter===null||t.typeId===activeFilter).slice().sort((a,b)=>tagStart(a)-tagStart(b));
   document.getElementById("countPill").textContent=shown.length+" 件";
   bar.style.display=shown.length>0?"flex":"none";
   if(shown.length===0){list.innerHTML='<div class="empty-list">'+(g.tags.length===0?"まだタグがありません。<br>動画を再生して、プレーにタグを打ってみましょう。":"このタグの記録はありません。")+'</div>';return;}
   list.innerHTML="";
   shown.forEach(t=>{
     const ty=typeById(t.typeId);
+    const s=tagStart(t), e=tagEnd(t);
+    const timeLabel=(e!==undefined)?(fmt(s)+'<span class="dash">→</span>'+fmt(e)):fmt(s);
+    const dur=(e!==undefined)?'<span class="dur">'+Math.round(e-s)+'秒</span>':'';
     const item=document.createElement("div");item.className="tag-item";item.style.borderLeftColor=ty.color;
-    item.innerHTML='<div class="time">'+fmt(t.time)+'</div><div class="body">'+
+    item.innerHTML='<div class="time">'+timeLabel+dur+'</div><div class="body">'+
       '<div class="label"><span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+'</div>'+
       (t.note?'<div class="note">'+escapeHtml(t.note)+'</div>':"")+
       '<input class="note-input" placeholder="メモを追加…" value="'+escapeAttr(t.note)+'"></div>'+
       '<div class="del" title="削除">🗑</div>';
-    item.onclick=(e)=>{if(e.target.classList.contains("note-input")||e.target.classList.contains("del"))return;seekTo(t.time);};
-    const ni=item.querySelector(".note-input");ni.onclick=(e)=>e.stopPropagation();ni.oninput=(e)=>setNote(t.id,e.target.value);
-    item.querySelector(".del").onclick=(e)=>{e.stopPropagation();delTag(t.id);};
+    item.onclick=(ev)=>{if(ev.target.classList.contains("note-input")||ev.target.classList.contains("del"))return;seekTo(s);};
+    const ni=item.querySelector(".note-input");ni.onclick=(ev)=>ev.stopPropagation();ni.oninput=(ev)=>setNote(t.id,ev.target.value);
+    item.querySelector(".del").onclick=(ev)=>{ev.stopPropagation();delTag(t.id);};
     list.appendChild(item);
   });
 }
@@ -478,30 +520,42 @@ function cycleSpeed(){
 }
 
 /* play-all (consecutive playback of filtered tags) */
-let playAll={on:false,queue:[],idx:0,timer:null};
-const CLIP_LEAD=3, CLIP_LEN=8; // 各タグの3秒前から約8秒再生
+let playAll={on:false,queue:[],idx:0,timer:null,watch:null};
+const CLIP_LEAD=3, CLIP_LEN=8; // 区間なし旧タグ用：3秒前から約8秒
 function startPlayAll(){
   const g=curGame();if(!g||!playerReady())return;
-  const list=g.tags.filter(t=>activeFilter===null||t.typeId===activeFilter);
+  const list=g.tags.filter(t=>activeFilter===null||t.typeId===activeFilter).slice().sort((a,b)=>tagStart(a)-tagStart(b));
   if(list.length===0)return;
   playAll.on=true;playAll.queue=list;playAll.idx=0;
   updatePlayAllBtn();
   playClip(0);
 }
 function stopPlayAll(){
-  playAll.on=false;clearTimeout(playAll.timer);
+  playAll.on=false;clearTimeout(playAll.timer);clearInterval(playAll.watch);
   updatePlayAllBtn();
 }
 function playClip(i){
   if(!playAll.on)return;
   if(i>=playAll.queue.length){stopPlayAll();return;}
   playAll.idx=i;
+  clearTimeout(playAll.timer);clearInterval(playAll.watch);
   const t=playAll.queue[i];
-  const start=Math.max(0,t.time-CLIP_LEAD);
-  player.seekTo(start,true);player.playVideo();
+  const e=tagEnd(t);
   document.getElementById("playallInfo").textContent=(i+1)+" / "+playAll.queue.length;
-  clearTimeout(playAll.timer);
-  playAll.timer=setTimeout(()=>playClip(i+1), CLIP_LEN*1000);
+  if(e!==undefined){
+    // 区間タグ：開始へ飛んで再生し、終了点に達したら次へ
+    const start=tagStart(t);
+    player.seekTo(start,true);player.playVideo();
+    playAll.watch=setInterval(()=>{
+      if(!playAll.on){clearInterval(playAll.watch);return;}
+      if(playerReady() && player.getCurrentTime()>=e){ clearInterval(playAll.watch); playClip(i+1); }
+    },200);
+  }else{
+    // 旧タグ（区間なし）：従来のフォールバック
+    const start=Math.max(0,tagStart(t)-CLIP_LEAD);
+    player.seekTo(start,true);player.playVideo();
+    playAll.timer=setTimeout(()=>playClip(i+1), CLIP_LEN*1000);
+  }
 }
 function updatePlayAllBtn(){
   const btn=document.getElementById("playAllBtn");
