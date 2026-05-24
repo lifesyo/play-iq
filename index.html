@@ -176,7 +176,7 @@
   .deck-actions .playall-btn:hover{filter:brightness(1.1);}
   .deck-actions .playall-btn.playing{background:var(--warn);color:#1a1205;}
   .deck-actions .export-btn{padding:9px 15px;}
-  .export-caption{position:absolute;left:0;right:0;bottom:8%;z-index:10;display:flex;justify-content:center;pointer-events:none;opacity:0;transition:opacity .35s;}
+  .export-caption{position:absolute;left:0;right:0;bottom:8%;z-index:100;display:flex;justify-content:center;pointer-events:none;opacity:0;transition:opacity .35s;}
   .export-caption.show{opacity:1;}
   .export-caption .cap-inner{display:flex;align-items:center;gap:14px;background:rgba(8,11,16,.82);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px 22px;box-shadow:0 10px 40px rgba(0,0,0,.6);}
   .export-caption .cap-num{font-variant-numeric:tabular-nums;font-size:18px;font-weight:800;color:#fff;letter-spacing:.5px;}
@@ -184,7 +184,7 @@
   .export-caption .cap-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
   .export-caption .cap-name{font-size:20px;font-weight:800;color:#fff;letter-spacing:.3px;}
   /* 操作バー（録画には映らないよう、説明上は上部の細いバー。録画開始前/終了時の操作用） */
-  .export-bar{position:absolute;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;gap:14px;padding:14px 20px;background:linear-gradient(180deg,rgba(0,0,0,.75),transparent);transition:opacity .3s;}
+  .export-bar{position:absolute;top:0;left:0;right:0;z-index:120;display:flex;align-items:center;gap:14px;padding:14px 20px;background:linear-gradient(180deg,rgba(0,0,0,.75),transparent);transition:opacity .3s;}
   .export-bar.hide{opacity:0;pointer-events:none;}
   .export-bar .ex-title{flex:1;font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .export-bar .ex-progress{font-variant-numeric:tabular-nums;font-size:13px;font-weight:700;color:var(--accent-2);}
@@ -192,7 +192,7 @@
   .export-bar .ex-btn:hover{filter:brightness(1.1);}
   .export-bar .ex-btn.ghost{background:rgba(255,255,255,.12);}
   /* スタート前の案内パネル */
-  .export-intro{position:absolute;inset:0;z-index:30;display:grid;place-items:center;background:rgba(5,7,11,.78);backdrop-filter:blur(4px);text-align:center;padding:24px;}
+  .export-intro{position:absolute;inset:0;z-index:140;display:grid;place-items:center;background:rgba(5,7,11,.78);backdrop-filter:blur(4px);text-align:center;padding:24px;}
   .export-intro .intro-card{max-width:440px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:var(--shadow);}
   .export-intro h3{font-size:19px;font-weight:800;margin-bottom:14px;color:#fff;}
   .export-intro p{font-size:13.5px;color:var(--txt-dim);line-height:1.85;margin-bottom:10px;}
@@ -203,18 +203,24 @@
   .export-intro .intro-meta b{color:var(--accent);font-size:14px;}
   .export-intro .intro-actions{display:flex;gap:10px;}
   .export-intro .intro-actions .btn{flex:1;justify-content:center;text-align:center;padding:13px;}
-  .export-countdown{position:absolute;inset:0;z-index:40;display:none;place-items:center;background:rgba(0,0,0,.55);}
+  .export-countdown{position:absolute;inset:0;z-index:160;display:none;place-items:center;background:rgba(0,0,0,.55);}
   .export-countdown.show{display:grid;}
   .export-countdown .cd-num{font-size:120px;font-weight:800;color:#fff;text-shadow:0 4px 30px rgba(0,0,0,.6);font-variant-numeric:tabular-nums;animation:cdpop .9s ease-out;}
+  /* 常駐の終了ボタン（再生中も必ず押せるよう最前面に固定） */
+  .export-quit{position:absolute;top:14px;right:14px;z-index:200;width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;background:rgba(0,0,0,.5);color:#fff;font-size:18px;font-weight:800;line-height:1;display:grid;place-items:center;transition:.12s;}
+  .export-quit:hover{background:rgba(255,90,60,.85);}
   @keyframes cdpop{0%{transform:scale(.5);opacity:0;}30%{transform:scale(1.1);opacity:1;}100%{transform:scale(1);opacity:1;}}
   /* メインプレイヤーをそのまま全画面化（別プレイヤーを作らず競合を避ける） */
-  .player-wrap.exporting{position:fixed;inset:0;z-index:200;width:100vw;height:100vh;aspect-ratio:auto;border-radius:0;border:none;}
-  .player-wrap.exporting #player{width:100%;height:100%;}
-  /* 書き出し用オーバーレイ（テロップ・バー・カウント・案内）は全画面化時のみ表示 */
-  .export-caption,.export-bar,.export-countdown,.export-intro{display:none;}
+  .player-wrap.exporting{position:fixed;inset:0;z-index:9000;width:100vw;height:100vh;aspect-ratio:auto;border-radius:0;border:none;overflow:hidden;}
+  .player-wrap.exporting #player{width:100%;height:100%;position:relative;z-index:1;}
+  /* 書き出し用オーバーレイ：通常時は隠し、全画面化時のみ前面表示 */
+  .export-caption,.export-bar,.export-countdown,.export-intro,.export-quit{display:none;}
   .player-wrap.exporting .export-caption{display:flex;}
   .player-wrap.exporting .export-bar{display:flex;}
+  .player-wrap.exporting .export-quit{display:grid;}
+  .player-wrap.exporting .export-countdown{display:none;}
   .player-wrap.exporting .export-countdown.show{display:grid;}
+  .player-wrap.exporting .export-intro{display:none;}
   .player-wrap.exporting .export-intro.show{display:grid;}
 </style>
 </head>
@@ -255,6 +261,7 @@
         動画は限定公開（Unlisted）でOKです。</div>
       </div>
       <!-- 書き出しモード用オーバーレイ（全画面化時のみ表示。メインプレイヤーをそのまま使う） -->
+      <button class="export-quit" id="exQuitBtn" title="書き出しモードを終了">✕</button>
       <div class="export-caption" id="exportCaption">
         <div class="cap-inner">
           <span class="cap-num" id="capNum"></span>
@@ -268,7 +275,7 @@
         <button class="ex-btn ghost" id="exCloseBtn">✕ 終了</button>
       </div>
       <div class="export-countdown" id="exportCountdown"><span class="cd-num" id="cdNum">3</span></div>
-      <div class="export-intro" id="exportIntro" style="display:none">
+      <div class="export-intro" id="exportIntro">
         <div class="intro-card">
           <h3>⎙ 書き出しモード</h3>
           <p>選択中のタグ区間を、<b>全画面・テロップ付き</b>で頭から順に自動再生します。iPhone / iPad の<b>画面収録</b>で録画してカメラロールに保存してください。</p>
@@ -790,6 +797,7 @@ document.getElementById("exportBtn").onclick=()=>{ if(playAll.on)stopPlayAll(); 
 document.getElementById("exportBtn2").onclick=()=>{ if(playAll.on)stopPlayAll(); openExportMode(); };
 document.getElementById("introStart").onclick=startExportPlayback;
 document.getElementById("introCancel").onclick=closeExportMode;
+document.getElementById("exQuitBtn").onclick=closeExportMode;
 document.getElementById("exCloseBtn").onclick=closeExportMode;
 document.addEventListener("keydown",e=>{
   if(document.getElementById("playerWrap").classList.contains("exporting")){
