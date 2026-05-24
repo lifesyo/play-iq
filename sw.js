@@ -1,6 +1,6 @@
 // Play IQ Service Worker
-// バージョンを変えると古いキャッシュが破棄される（更新時はここを上げる）
-const CACHE = "playiq-v1";
+// アプリの基本ファイルをキャッシュし、オフラインでも開けるようにする。
+const CACHE = "playiq-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -26,17 +26,17 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
 
-  // 外部通信（YouTube / Firebase / gstatic / Google）は一切キャッシュせず素通し
-  // これらは常に最新を取りに行く必要があるため
+  // 外部リソース（YouTube / Firebase / gstatic / Google など）はキャッシュせず素通し。
+  // 自分のオリジン以外は何もしない。
   if (url.origin !== self.location.origin) {
-    return; // ブラウザ標準の取得に任せる
+    return; // ブラウザの通常処理に任せる
   }
 
-  // GET 以外は素通し
+  // GET 以外は無視
   if (e.request.method !== "GET") return;
 
-  // アプリ本体（同一オリジン）は network-first：
-  // ネットがあれば最新を取得しキャッシュ更新、なければキャッシュから返す（オフライン対応）
+  // 自分のファイルは network-first：
+  // 常に最新を取りに行き、取れたらキャッシュ更新。失敗時のみキャッシュを返す。
   e.respondWith(
     fetch(e.request)
       .then((res) => {
