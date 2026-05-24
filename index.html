@@ -210,7 +210,10 @@
   .export-quit{position:absolute;top:14px;right:14px;z-index:200;width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;background:rgba(0,0,0,.5);color:#fff;font-size:18px;font-weight:800;line-height:1;display:grid;place-items:center;transition:.12s;}
   .export-quit:hover{background:rgba(255,90,60,.85);}
   /* 透明な膜：再生面へのタップを遮断し、中央の再生/一時停止ロゴが出ないようにする */
-  .export-shield{position:absolute;inset:0;z-index:50;background:transparent;}
+  .export-shield{position:absolute;inset:0;z-index:50;background:transparent;touch-action:none;-webkit-user-select:none;user-select:none;}
+  /* クリップ切替時の一瞬の目隠し（中央ロゴを覆う） */
+  .export-mask{position:absolute;inset:0;z-index:90;background:#000;opacity:0;pointer-events:none;transition:opacity .12s;}
+  .export-mask.show{opacity:1;}
   /* 手動操作ボタン（右下・普段は隠れ、タップで数秒だけ出る） */
   .export-ctrl{position:absolute;right:14px;bottom:14px;z-index:130;display:flex;gap:8px;opacity:0;transform:translateY(6px);pointer-events:none;transition:opacity .25s,transform .25s;}
   .export-ctrl.visible{opacity:1;transform:translateY(0);pointer-events:auto;}
@@ -219,11 +222,12 @@
   .export-ctrl .exc-btn:active{transform:scale(.95);}
   @keyframes cdpop{0%{transform:scale(.5);opacity:0;}30%{transform:scale(1.1);opacity:1;}100%{transform:scale(1);opacity:1;}}
   /* メインプレイヤーをそのまま全画面化（別プレイヤーを作らず競合を避ける） */
-  .player-wrap.exporting{position:fixed;inset:0;z-index:9000;width:100vw;height:100vh;aspect-ratio:auto;border-radius:0;border:none;overflow:hidden;}
+  .player-wrap.exporting{position:fixed;inset:0;z-index:9000;width:100vw;height:100vh;aspect-ratio:auto;border-radius:0;border:none;overflow:hidden;touch-action:manipulation;}
   .player-wrap.exporting #player{width:100%;height:100%;position:relative;z-index:1;}
   /* 書き出し用オーバーレイ：通常時は隠し、全画面化時のみ前面表示 */
-  .export-caption,.export-bar,.export-countdown,.export-intro,.export-quit,.export-shield,.export-ctrl{display:none;}
+  .export-caption,.export-bar,.export-countdown,.export-intro,.export-quit,.export-shield,.export-ctrl,.export-mask{display:none;}
   .player-wrap.exporting .export-shield{display:block;}
+  .player-wrap.exporting .export-mask{display:block;}
   .player-wrap.exporting .export-ctrl{display:flex;}
   .player-wrap.exporting .export-caption{display:flex;}
   .player-wrap.exporting .export-bar{display:flex;}
@@ -272,6 +276,7 @@
       </div>
       <!-- 書き出しモード用オーバーレイ（全画面化時のみ表示。メインプレイヤーをそのまま使う） -->
       <div class="export-shield" id="exportShield"></div>
+      <div class="export-mask" id="exportMask"></div>
       <div class="export-ctrl" id="exportCtrl">
         <button class="exc-btn" id="excRestart" title="最初から">⏮ 最初</button>
         <button class="exc-btn" id="excPrev" title="前のクリップ">◀ 前</button>
@@ -758,6 +763,7 @@ function exportPlayClip(i){
     exportRun.timer=setTimeout(()=>exportPlayClip(i),300);return;
   }
   const start=(e!==undefined)?s:Math.max(0,s-CLIP_LEAD);
+  flashMask(); // クリップ切替の一瞬、中央ロゴを黒幕で隠す
   try{player.mute();}catch(err){}
   player.seekTo(start,true);player.playVideo();
   if(e!==undefined){
@@ -816,6 +822,16 @@ function revealCtrl(){
   ctrlHideTimer=setTimeout(()=>c.classList.remove("visible"),3000);
 }
 
+/* クリップ切替時、中央ロゴが出る一瞬を黒幕で隠す */
+let maskTimer=null;
+function flashMask(){
+  const m=document.getElementById("exportMask");
+  if(!m)return;
+  m.classList.add("show");
+  clearTimeout(maskTimer);
+  maskTimer=setTimeout(()=>m.classList.remove("show"),650);
+}
+
 
 document.getElementById("back5").onclick=()=>skip(-5);
 document.getElementById("fwd5").onclick=()=>skip(5);
@@ -830,6 +846,16 @@ document.getElementById("introCancel").onclick=closeExportMode;
 document.getElementById("exQuitBtn").onclick=closeExportMode;
 // シールドをタップ→操作ボタンを数秒表示
 document.getElementById("exportShield").onclick=revealCtrl;
+// ダブルタップによる拡大を防ぐ（iOS Safari対策）
+(function(){
+  const sh=document.getElementById("exportShield");
+  let lastTouch=0;
+  sh.addEventListener("touchend",(e)=>{
+    const now=Date.now();
+    if(now-lastTouch<=350){ e.preventDefault(); } // ダブルタップ判定で拡大を抑制
+    lastTouch=now;
+  },{passive:false});
+})();
 // 各操作ボタン（押したら動作＋表示を維持）
 document.getElementById("excRestart").onclick=(e)=>{e.stopPropagation();exportRestart();revealCtrl();};
 document.getElementById("excPrev").onclick=(e)=>{e.stopPropagation();exportPrev();revealCtrl();};
