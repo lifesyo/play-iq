@@ -209,12 +209,22 @@
   /* 常駐の終了ボタン（再生中も必ず押せるよう最前面に固定） */
   .export-quit{position:absolute;top:14px;right:14px;z-index:200;width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;background:rgba(0,0,0,.5);color:#fff;font-size:18px;font-weight:800;line-height:1;display:grid;place-items:center;transition:.12s;}
   .export-quit:hover{background:rgba(255,90,60,.85);}
+  /* 透明な膜：再生面へのタップを遮断し、中央の再生/一時停止ロゴが出ないようにする */
+  .export-shield{position:absolute;inset:0;z-index:50;background:transparent;}
+  /* 手動操作ボタン（右下・普段は隠れ、タップで数秒だけ出る） */
+  .export-ctrl{position:absolute;right:14px;bottom:14px;z-index:130;display:flex;gap:8px;opacity:0;transform:translateY(6px);pointer-events:none;transition:opacity .25s,transform .25s;}
+  .export-ctrl.visible{opacity:1;transform:translateY(0);pointer-events:auto;}
+  .export-ctrl .exc-btn{border:none;cursor:pointer;font-weight:700;font-size:13px;padding:9px 13px;border-radius:10px;color:#fff;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);transition:.12s;white-space:nowrap;}
+  .export-ctrl .exc-btn:hover{background:rgba(255,90,60,.85);}
+  .export-ctrl .exc-btn:active{transform:scale(.95);}
   @keyframes cdpop{0%{transform:scale(.5);opacity:0;}30%{transform:scale(1.1);opacity:1;}100%{transform:scale(1);opacity:1;}}
   /* メインプレイヤーをそのまま全画面化（別プレイヤーを作らず競合を避ける） */
   .player-wrap.exporting{position:fixed;inset:0;z-index:9000;width:100vw;height:100vh;aspect-ratio:auto;border-radius:0;border:none;overflow:hidden;}
   .player-wrap.exporting #player{width:100%;height:100%;position:relative;z-index:1;}
   /* 書き出し用オーバーレイ：通常時は隠し、全画面化時のみ前面表示 */
-  .export-caption,.export-bar,.export-countdown,.export-intro,.export-quit{display:none;}
+  .export-caption,.export-bar,.export-countdown,.export-intro,.export-quit,.export-shield,.export-ctrl{display:none;}
+  .player-wrap.exporting .export-shield{display:block;}
+  .player-wrap.exporting .export-ctrl{display:flex;}
   .player-wrap.exporting .export-caption{display:flex;}
   .player-wrap.exporting .export-bar{display:flex;}
   .player-wrap.exporting .export-quit{display:grid;}
@@ -261,6 +271,12 @@
         動画は限定公開（Unlisted）でOKです。</div>
       </div>
       <!-- 書き出しモード用オーバーレイ（全画面化時のみ表示。メインプレイヤーをそのまま使う） -->
+      <div class="export-shield" id="exportShield"></div>
+      <div class="export-ctrl" id="exportCtrl">
+        <button class="exc-btn" id="excRestart" title="最初から">⏮ 最初</button>
+        <button class="exc-btn" id="excPrev" title="前のクリップ">◀ 前</button>
+        <button class="exc-btn" id="excNext" title="次のクリップ">次 ▶</button>
+      </div>
       <button class="export-quit" id="exQuitBtn" title="書き出しモードを終了">✕</button>
       <div class="export-caption" id="exportCaption">
         <div class="cap-inner">
@@ -786,6 +802,20 @@ function closeExportMode(){
   document.getElementById("exportCountdown").classList.remove("show");
 }
 
+/* 手動操作：最初から／前のクリップ／次のクリップ */
+function exportRestart(){ if(exportRun.queue.length){exportRun.on=true;exportPlayClip(0);} }
+function exportPrev(){ if(exportRun.queue.length){exportRun.on=true;exportPlayClip(Math.max(0,exportRun.idx-1));} }
+function exportNext(){ if(exportRun.queue.length){exportRun.on=true;exportPlayClip(exportRun.idx+1);} }
+
+/* シールドをタップすると操作ボタンを数秒だけ表示 */
+let ctrlHideTimer=null;
+function revealCtrl(){
+  const c=document.getElementById("exportCtrl");
+  c.classList.add("visible");
+  clearTimeout(ctrlHideTimer);
+  ctrlHideTimer=setTimeout(()=>c.classList.remove("visible"),3000);
+}
+
 
 document.getElementById("back5").onclick=()=>skip(-5);
 document.getElementById("fwd5").onclick=()=>skip(5);
@@ -798,6 +828,12 @@ document.getElementById("exportBtn2").onclick=()=>{ if(playAll.on)stopPlayAll();
 document.getElementById("introStart").onclick=startExportPlayback;
 document.getElementById("introCancel").onclick=closeExportMode;
 document.getElementById("exQuitBtn").onclick=closeExportMode;
+// シールドをタップ→操作ボタンを数秒表示
+document.getElementById("exportShield").onclick=revealCtrl;
+// 各操作ボタン（押したら動作＋表示を維持）
+document.getElementById("excRestart").onclick=(e)=>{e.stopPropagation();exportRestart();revealCtrl();};
+document.getElementById("excPrev").onclick=(e)=>{e.stopPropagation();exportPrev();revealCtrl();};
+document.getElementById("excNext").onclick=(e)=>{e.stopPropagation();exportNext();revealCtrl();};
 document.getElementById("exCloseBtn").onclick=closeExportMode;
 document.addEventListener("keydown",e=>{
   if(document.getElementById("playerWrap").classList.contains("exporting")){
