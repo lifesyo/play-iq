@@ -166,6 +166,16 @@
   /* ---- 書き出しモード（全画面・テロップ付き自動連続再生） ---- */
   .export-btn{background:var(--panel-2);color:var(--accent-2);border:1px solid var(--accent-2);cursor:pointer;padding:8px 12px;border-radius:9px;font-weight:700;font-size:13px;transition:.12s;white-space:nowrap;}
   .export-btn:hover{background:rgba(60,165,255,.12);}
+  /* 中央パネル（tagdeck）内の連続再生／書き出しバー：iPadでも必ず見える位置 */
+  .deck-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:13px;border-top:1px solid var(--line);}
+  .deck-actions .da-label{font-size:11px;font-weight:700;color:var(--txt-dim);letter-spacing:.5px;text-transform:uppercase;margin-right:2px;}
+  .deck-actions .da-filter{font-size:12px;font-weight:700;color:var(--txt);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;display:flex;align-items:center;gap:6px;}
+  .deck-actions .da-filter .dot{width:8px;height:8px;border-radius:50%;}
+  .deck-actions .da-info{font-size:11.5px;color:var(--txt-dim);font-weight:600;font-variant-numeric:tabular-nums;}
+  .deck-actions .playall-btn{background:var(--accent);color:#fff;border:none;cursor:pointer;padding:9px 15px;border-radius:9px;font-weight:700;font-size:13px;transition:.12s;}
+  .deck-actions .playall-btn:hover{filter:brightness(1.1);}
+  .deck-actions .playall-btn.playing{background:var(--warn);color:#1a1205;}
+  .deck-actions .export-btn{padding:9px 15px;}
   .export-overlay{position:fixed;inset:0;z-index:200;background:#000;display:none;flex-direction:column;}
   .export-overlay.show{display:flex;}
   .export-stage{position:relative;flex:1;width:100%;height:100%;background:#000;}
@@ -255,6 +265,13 @@
       </div>
       <div class="tag-buttons" id="tagButtons"></div>
       <div class="hint">タグは<b>2回押し</b>で区間を記録します。プレー開始時に1回押す→終了時にもう一度同じタグを押すと、その区間が記録されます。<kbd>1</kbd>〜<kbd>9</kbd>でタグ打ち、<kbd>,</kbd>／<kbd>.</kbd>で5秒戻る／進む。連続再生はこの区間どおりに再生されます。</div>
+      <div class="deck-actions" id="deckActions" style="display:none">
+        <span class="da-label">再生</span>
+        <span class="da-filter" id="deckFilter">すべて</span>
+        <button class="playall-btn" id="playAllBtn2">▶ 連続再生</button>
+        <button class="export-btn" id="exportBtn2" title="全画面・テロップ付きで自動連続再生（画面収録用）">⎙ 書き出しモード</button>
+        <span class="da-info" id="playallInfo2"></span>
+      </div>
     </div>
   </main>
   <aside>
@@ -545,11 +562,19 @@ function renderSummary(){
 function renderTags(){
   const list=document.getElementById("tagList");const g=curGame();
   const bar=document.getElementById("playallBar");
-  if(!g){list.innerHTML='<div class="empty-list">試合を選ぶとタグが表示されます。</div>';document.getElementById("countPill").textContent="0 件";document.getElementById("summary").innerHTML="";bar.style.display="none";return;}
+  if(!g){list.innerHTML='<div class="empty-list">試合を選ぶとタグが表示されます。</div>';document.getElementById("countPill").textContent="0 件";document.getElementById("summary").innerHTML="";bar.style.display="none";document.getElementById("deckActions").style.display="none";return;}
   renderSummary();
   const shown=g.tags.filter(t=>activeFilter===null||t.typeId===activeFilter).slice().sort((a,b)=>tagStart(a)-tagStart(b));
   document.getElementById("countPill").textContent=shown.length+" 件";
   bar.style.display=shown.length>0?"flex":"none";
+  // 中央パネルの再生バーも同期（iPadで必ず見える）
+  const deckActions=document.getElementById("deckActions");
+  deckActions.style.display=shown.length>0?"flex":"none";
+  if(shown.length>0){
+    const df=document.getElementById("deckFilter");
+    if(activeFilter===null){df.innerHTML='すべて（'+shown.length+'件）';}
+    else{const ty=typeById(activeFilter);df.innerHTML='<span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+'（'+shown.length+'件）';}
+  }
   if(shown.length===0){list.innerHTML='<div class="empty-list">'+(g.tags.length===0?"まだタグがありません。<br>動画を再生して、プレーにタグを打ってみましょう。":"このタグの記録はありません。")+'</div>';return;}
   list.innerHTML="";
   shown.forEach(t=>{
@@ -620,6 +645,7 @@ function playClip(i){
   const t=playAll.queue[i];
   const e=tagEnd(t);
   document.getElementById("playallInfo").textContent=(i+1)+" / "+playAll.queue.length;
+  const i2=document.getElementById("playallInfo2");if(i2)i2.textContent=(i+1)+" / "+playAll.queue.length;
   if(e!==undefined){
     // 区間タグ：開始へ飛んで再生し、終了点に達したら次へ
     const start=tagStart(t);
@@ -637,8 +663,15 @@ function playClip(i){
 }
 function updatePlayAllBtn(){
   const btn=document.getElementById("playAllBtn");
-  if(playAll.on){btn.textContent="■ 停止";btn.classList.add("playing");}
-  else{btn.textContent="▶ 連続再生";btn.classList.remove("playing");document.getElementById("playallInfo").textContent="";}
+  const btn2=document.getElementById("playAllBtn2");
+  if(playAll.on){
+    btn.textContent="■ 停止";btn.classList.add("playing");
+    if(btn2){btn2.textContent="■ 停止";btn2.classList.add("playing");}
+  }else{
+    btn.textContent="▶ 連続再生";btn.classList.remove("playing");document.getElementById("playallInfo").textContent="";
+    if(btn2){btn2.textContent="▶ 連続再生";btn2.classList.remove("playing");}
+    const i2=document.getElementById("playallInfo2");if(i2)i2.textContent="";
+  }
 }
 
 /* ---------- 書き出しモード（全画面・テロップ付き自動連続再生） ---------- */
@@ -769,7 +802,9 @@ document.getElementById("fwd5").onclick=()=>skip(5);
 document.getElementById("playpause").onclick=togglePlay;
 document.getElementById("speedBtn").onclick=cycleSpeed;
 document.getElementById("playAllBtn").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
+document.getElementById("playAllBtn2").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
 document.getElementById("exportBtn").onclick=()=>{ if(playAll.on)stopPlayAll(); openExportMode(); };
+document.getElementById("exportBtn2").onclick=()=>{ if(playAll.on)stopPlayAll(); openExportMode(); };
 document.getElementById("introStart").onclick=startExportPlayback;
 document.getElementById("introCancel").onclick=closeExportMode;
 document.getElementById("exCloseBtn").onclick=closeExportMode;
