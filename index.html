@@ -31,7 +31,28 @@
   .app{
     display:grid;grid-template-columns:240px 1fr 380px;grid-template-rows:auto 1fr;
     grid-template-areas:"head head head" "games main side";height:100vh;
+    transition:grid-template-columns .25s ease;
   }
+  /* 試合一覧の折りたたみ */
+  .app.games-collapsed{grid-template-columns:0 1fr 380px;}
+  .app.games-collapsed .games{transform:translateX(-100%);opacity:0;pointer-events:none;}
+  .games{transition:transform .25s ease,opacity .2s ease;}
+  /* 折りたたみ開閉ボタン（ヘッダー左） */
+  .games-toggle{background:var(--panel-2);color:var(--txt);border:1px solid var(--line);cursor:pointer;width:32px;height:32px;border-radius:9px;font-size:16px;line-height:1;display:grid;place-items:center;transition:.12s;flex-shrink:0;}
+  .games-toggle:hover{filter:brightness(1.15);color:var(--accent);}
+  /* タグ並び替えトグル＆矢印ボタン */
+  .reorder-toggle{background:var(--panel-2);color:var(--txt-dim);border:1px solid var(--line);cursor:pointer;padding:5px 11px;border-radius:8px;font-weight:700;font-size:12px;transition:.12s;}
+  .reorder-toggle:hover{color:var(--accent-2);}
+  .reorder-toggle.active{background:var(--accent-2);color:#fff;border-color:var(--accent-2);}
+  .tag-btn .move{color:var(--txt-dim);font-size:14px;line-height:1;cursor:pointer;padding:0 3px;border-radius:4px;}
+  .tag-btn .move:hover{color:var(--accent-2);}
+  .tag-item .move-col{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
+  .tag-item .move-col span{color:var(--txt-dim);font-size:13px;line-height:1;cursor:pointer;padding:1px 3px;border-radius:4px;}
+  .tag-item .move-col span:hover{color:var(--accent-2);}
+  /* 長押しドラッグ並び替え */
+  .tag-item{touch-action:pan-y;}
+  .tag-item.dragging{box-shadow:0 12px 30px rgba(0,0,0,.5);opacity:.95;background:var(--panel-2);border-color:var(--accent-2);}
+  .drag-placeholder{border:2px dashed var(--accent-2);border-radius:11px;background:rgba(60,165,255,.06);margin:0;}
   header{
     grid-area:head;display:flex;align-items:center;gap:16px;padding:14px 22px;
     border-bottom:1px solid var(--line);
@@ -160,6 +181,14 @@
   .modal input[type=text]{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--txt);padding:11px 13px;border-radius:10px;font-size:14px;outline:none;margin-bottom:16px;font-family:inherit;}
   .modal input:focus{border-color:var(--accent-2);}
   .swatches{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:22px;}
+  .tpl-list{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px;}
+  .tpl-chip{border:1px solid var(--line);background:var(--panel-2);color:var(--txt);cursor:pointer;padding:7px 12px;border-radius:9px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;transition:.12s;position:relative;}
+  .tpl-chip:hover{border-color:var(--accent-2);}
+  .tpl-chip .dot{width:9px;height:9px;border-radius:50%;}
+  .tpl-chip .tpl-x{color:var(--txt-dim);font-size:13px;margin-left:2px;padding:0 2px;}
+  .tpl-chip .tpl-x:hover{color:var(--accent);}
+  .tpl-save-row{display:flex !important;align-items:center;gap:8px;font-size:13px;color:var(--txt);font-weight:600;margin-bottom:18px;cursor:pointer;}
+  .tpl-save-row input{width:auto;margin:0;}
   .swatch{width:30px;height:30px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:.12s;}
   .swatch.sel{border-color:#fff;transform:scale(1.12);}
   .modal-actions{display:flex;gap:10px;}
@@ -169,6 +198,7 @@
 <body>
 <div class="app">
   <header>
+    <button class="games-toggle" id="gamesToggle" title="試合一覧の表示/非表示">☰</button>
     <div class="logo">
       <div class="mark">IQ</div>
       <div><h1>Play IQ</h1><span>Tagging Player</span></div>
@@ -206,7 +236,10 @@
     <div class="tagdeck disabled" id="tagdeck">
       <div class="deck-head">
         <h2>タグを打つ</h2>
-        <div class="now">現在位置 <b id="nowTime">0:00</b></div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="reorder-toggle" id="reorderToggle" title="タグの並び替え">⇄ 並び替え</button>
+          <div class="now">現在位置 <b id="nowTime">0:00</b></div>
+        </div>
       </div>
       <div class="transport">
         <button class="tp-btn" id="back5">⏪ 5秒</button>
@@ -251,10 +284,15 @@
 <div class="modal-bg" id="tagModalBg">
   <div class="modal">
     <h3>新しいタグを作る</h3>
+    <div id="tplSection" style="display:none">
+      <label>定番タグから選ぶ</label>
+      <div class="tpl-list" id="tplList"></div>
+    </div>
     <label>タグ名</label>
     <input type="text" id="newTagName" placeholder="例：リバウンド、ターンオーバー">
     <label>色</label>
     <div class="swatches" id="swatches"></div>
+    <label class="tpl-save-row"><input type="checkbox" id="saveTpl"> このタグを定番として登録する</label>
     <div class="modal-actions">
       <button class="btn ghost" id="cancelTag">キャンセル</button>
       <button class="btn" id="createTag">作成</button>
@@ -292,7 +330,7 @@ window.PlayIQ = {
   async save(data){
     if(!currentUid) return;
     try{
-      await setDoc(doc(db, "playiq_data", currentUid), {games:data, updatedAt:Date.now()});
+      await setDoc(doc(db, "playiq_data", currentUid), {games:data.games, templates:data.templates||[], updatedAt:Date.now()});
       window.onSyncSaved && window.onSyncSaved();
     }catch(e){ console.error("save failed", e); window.onSyncError && window.onSyncError(); }
   }
@@ -304,9 +342,9 @@ onAuthStateChanged(auth, async (user)=>{
     window.onAuthIn && window.onAuthIn({name:user.displayName||"ユーザー", photo:user.photoURL||""});
     try{
       const snap = await getDoc(doc(db, "playiq_data", currentUid));
-      const remote = snap.exists() ? (snap.data().games||[]) : [];
-      window.onDataLoaded && window.onDataLoaded(remote);
-    }catch(e){ console.error("load failed", e); window.onDataLoaded && window.onDataLoaded([]); }
+      const d = snap.exists() ? snap.data() : {};
+      window.onDataLoaded && window.onDataLoaded({games:d.games||[], templates:d.templates||[]});
+    }catch(e){ console.error("load failed", e); window.onDataLoaded && window.onDataLoaded({games:[],templates:[]}); }
   }else{
     currentUid = null;
     window.onAuthOut && window.onAuthOut();
@@ -321,6 +359,8 @@ const DEFAULT_TAGTYPES=()=>[
   {id:"t3",name:"シュート",color:"#36d399"},
 ];
 let games=[],currentGameId=null,activeFilter=null,selectedColor=PALETTE[0];
+let reorderMode=false;
+let tagTemplates=[]; // 定番タグ {name,color}
 function curGame(){return games.find(g=>g.id===currentGameId)||null;}
 let player=null,pollTimer=null;
 function playerReady(){return !!(player&&typeof player.getCurrentTime==="function"&&typeof player.getPlayerState==="function"&&player.getPlayerState()!==-1);}
@@ -427,19 +467,45 @@ function renderTagButtons(){
     if(isPending){
       b.innerHTML='<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
         ' <span class="rec">● 終了を押す</span>';
+    }else if(reorderMode){
+      // 並び替えモード：←→で順番を入れ替え
+      b.innerHTML='<span class="move" data-dir="-1" title="左へ">◀</span>'+
+        '<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
+        '<span class="move" data-dir="1" title="右へ">▶</span>';
+      b.querySelectorAll(".move").forEach(m=>{
+        m.onclick=(e)=>{e.stopPropagation();moveTagType(i,parseInt(m.dataset.dir));};
+      });
     }else{
       b.innerHTML='<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
         (i<9?'<span style="color:var(--txt-dim);font-size:11px;margin-left:3px">'+(i+1)+'</span>':"")+
         '<span class="x" title="削除">×</span>';
       b.querySelector(".x").onclick=(e)=>{e.stopPropagation();if(confirm("タグ「"+t.name+"」を削除しますか？")){g.tagTypes=g.tagTypes.filter(x=>x.id!==t.id);if(activeFilter===t.id)activeFilter=null;renderTagButtons();renderFilters();renderTags();scheduleSave();}};
     }
-    b.onclick=()=>addTag(t.id);box.appendChild(b);
+    if(reorderMode){ b.onclick=()=>{}; }else{ b.onclick=()=>addTag(t.id); }
+    box.appendChild(b);
   });
   if(pending){
     const cancel=document.createElement("button");cancel.className="cancel-pending";cancel.textContent="✕ 計測キャンセル";cancel.onclick=cancelPending;box.appendChild(cancel);
-  }else{
+  }else if(!reorderMode){
     const add=document.createElement("button");add.className="add-tag";add.textContent="＋ タグを追加";add.onclick=openTagModal;box.appendChild(add);
   }
+}
+function moveTagType(idx,dir){
+  const g=curGame();if(!g)return;
+  const j=idx+dir;
+  if(j<0||j>=g.tagTypes.length)return;
+  const tmp=g.tagTypes[idx];g.tagTypes[idx]=g.tagTypes[j];g.tagTypes[j]=tmp;
+  renderTagButtons();renderFilters();scheduleSave();
+}
+function moveTagItem(shown,idx,dir){
+  const g=curGame();if(!g)return;
+  const j=idx+dir;
+  if(j<0||j>=shown.length)return;
+  // 現在の表示順をベースに手動順を作り、隣と入れ替える
+  const order=shown.map(t=>t.id);
+  const tmp=order[idx];order[idx]=order[j];order[j]=tmp;
+  g.manualOrder=order;
+  renderTags();scheduleSave();
 }
 function renderFilters(){
   const box=document.getElementById("filters");box.innerHTML="";
@@ -470,34 +536,158 @@ function renderTags(){
   const bar=document.getElementById("playallBar");
   if(!g){list.innerHTML='<div class="empty-list">試合を選ぶとタグが表示されます。</div>';document.getElementById("countPill").textContent="0 件";document.getElementById("summary").innerHTML="";bar.style.display="none";return;}
   renderSummary();
-  const shown=g.tags.filter(t=>activeFilter===null||t.typeId===activeFilter).slice().sort((a,b)=>tagStart(a)-tagStart(b));
+  let shown=g.tags.filter(t=>activeFilter===null||t.typeId===activeFilter).slice();
+  // 手動順があればそれに従い、なければ時間順
+  if(g.manualOrder&&g.manualOrder.length){
+    shown.sort((a,b)=>{
+      const ia=g.manualOrder.indexOf(a.id), ib=g.manualOrder.indexOf(b.id);
+      if(ia===-1&&ib===-1)return tagStart(a)-tagStart(b);
+      if(ia===-1)return 1; if(ib===-1)return -1;
+      return ia-ib;
+    });
+  }else{
+    shown.sort((a,b)=>tagStart(a)-tagStart(b));
+  }
   document.getElementById("countPill").textContent=shown.length+" 件";
   bar.style.display=shown.length>0?"flex":"none";
   if(shown.length===0){list.innerHTML='<div class="empty-list">'+(g.tags.length===0?"まだタグがありません。<br>動画を再生して、プレーにタグを打ってみましょう。":"このタグの記録はありません。")+'</div>';return;}
   list.innerHTML="";
-  shown.forEach(t=>{
+  shown.forEach((t,idx)=>{
     const ty=typeById(t.typeId);
     const s=tagStart(t), e=tagEnd(t);
     const timeLabel=(e!==undefined)?(fmt(s)+'<span class="dash">→</span>'+fmt(e)):fmt(s);
     const dur=(e!==undefined)?'<span class="dur">'+Math.round(e-s)+'秒</span>':'';
     const item=document.createElement("div");item.className="tag-item";item.style.borderLeftColor=ty.color;
+    item.dataset.tagId=t.id;
     item.innerHTML='<div class="time">'+timeLabel+dur+'</div><div class="body">'+
       '<div class="label"><span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+'</div>'+
       (t.note?'<div class="note">'+escapeHtml(t.note)+'</div>':"")+
       '<input class="note-input" placeholder="メモを追加…" value="'+escapeAttr(t.note)+'"></div>'+
       '<div class="del" title="削除">🗑</div>';
-    item.onclick=(ev)=>{if(ev.target.classList.contains("note-input")||ev.target.classList.contains("del"))return;seekTo(s);};
+    item.onclick=(ev)=>{if(ev.target.classList.contains("note-input")||ev.target.classList.contains("del"))return;if(item.dataset.dragging==="1")return;seekTo(s);};
     const ni=item.querySelector(".note-input");ni.onclick=(ev)=>ev.stopPropagation();ni.oninput=(ev)=>setNote(t.id,ev.target.value);
     item.querySelector(".del").onclick=(ev)=>{ev.stopPropagation();delTag(t.id);};
+    attachDragSort(item);
     list.appendChild(item);
   });
 }
+
+/* ===== 長押しドラッグで右タグ一覧を並び替え ===== */
+function attachDragSort(item){
+  let pressTimer=null, dragging=false, startY=0, placeholder=null, clone=null, list=null;
+  const LONG_PRESS=400;
+  function onDown(e){
+    // メモ欄・削除ボタンの上では開始しない
+    if(e.target.classList.contains("note-input")||e.target.classList.contains("del"))return;
+    const pt=e.touches?e.touches[0]:e;
+    startY=pt.clientY;
+    pressTimer=setTimeout(()=>{ beginDrag(pt); }, LONG_PRESS);
+    document.addEventListener("touchmove",onMove,{passive:false});
+    document.addEventListener("mousemove",onMove);
+    document.addEventListener("touchend",onUp);
+    document.addEventListener("mouseup",onUp);
+  }
+  function beginDrag(pt){
+    dragging=true;item.dataset.dragging="1";
+    list=document.getElementById("tagList");
+    if(navigator.vibrate)navigator.vibrate(20); // 触覚フィードバック
+    item.classList.add("drag-source");
+    // 並び替え対象の高さ確保用プレースホルダ
+    placeholder=document.createElement("div");
+    placeholder.className="drag-placeholder";
+    placeholder.style.height=item.offsetHeight+"px";
+    item.parentNode.insertBefore(placeholder,item.nextSibling);
+    item.classList.add("dragging");
+    item.style.width=item.offsetWidth+"px";
+  }
+  function onMove(e){
+    if(pressTimer&&!dragging){
+      // 長押し完了前に大きく動いたらスクロール扱いでキャンセル
+      const pt=e.touches?e.touches[0]:e;
+      if(Math.abs(pt.clientY-startY)>10){clearTimeout(pressTimer);pressTimer=null;cleanup();}
+      return;
+    }
+    if(!dragging)return;
+    e.preventDefault();
+    const pt=e.touches?e.touches[0]:e;
+    item.style.position="fixed";
+    item.style.zIndex="9999";
+    item.style.left=item.getBoundingClientRect().left+"px";
+    item.style.top=(pt.clientY-item.offsetHeight/2)+"px";
+    item.style.pointerEvents="none";
+    // 挿入位置を決める：プレースホルダを移動
+    const items=[...list.querySelectorAll(".tag-item:not(.dragging)")];
+    let placed=false;
+    for(const other of items){
+      const r=other.getBoundingClientRect();
+      if(pt.clientY < r.top+r.height/2){ list.insertBefore(placeholder,other); placed=true; break; }
+    }
+    if(!placed)list.appendChild(placeholder);
+  }
+  function onUp(){
+    clearTimeout(pressTimer);pressTimer=null;
+    if(dragging){
+      // プレースホルダの位置にitemを戻して、新しい順序を保存
+      list.insertBefore(item,placeholder);
+      placeholder.remove();
+      item.classList.remove("dragging","drag-source");
+      item.style.position="";item.style.zIndex="";item.style.left="";item.style.top="";item.style.width="";item.style.pointerEvents="";
+      saveNewOrder();
+      setTimeout(()=>{item.dataset.dragging="";},50); // クリック誤発火防止
+    }
+    cleanup();
+  }
+  function cleanup(){
+    document.removeEventListener("touchmove",onMove);
+    document.removeEventListener("mousemove",onMove);
+    document.removeEventListener("touchend",onUp);
+    document.removeEventListener("mouseup",onUp);
+    dragging=false;
+  }
+  item.addEventListener("touchstart",onDown,{passive:true});
+  item.addEventListener("mousedown",onDown);
+}
+function saveNewOrder(){
+  const g=curGame();if(!g)return;
+  const list=document.getElementById("tagList");
+  const order=[...list.querySelectorAll(".tag-item")].map(el=>el.dataset.tagId).filter(Boolean);
+  g.manualOrder=order;
+  scheduleSave();
+}
 function escapeHtml(s){return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
 function escapeAttr(s){return (s||"").replace(/"/g,"&quot;");}
-function openTagModal(){if(!curGame())return;document.getElementById("newTagName").value="";selectedColor=PALETTE[0];renderSwatches();document.getElementById("tagModalBg").classList.add("show");document.getElementById("newTagName").focus();}
+function openTagModal(){if(!curGame())return;document.getElementById("newTagName").value="";selectedColor=PALETTE[0];document.getElementById("saveTpl").checked=false;renderSwatches();renderTemplates();document.getElementById("tagModalBg").classList.add("show");document.getElementById("newTagName").focus();}
 function closeTagModal(){document.getElementById("tagModalBg").classList.remove("show");}
 function renderSwatches(){const box=document.getElementById("swatches");box.innerHTML="";PALETTE.forEach(c=>{const s=document.createElement("div");s.className="swatch"+(c===selectedColor?" sel":"");s.style.background=c;s.onclick=()=>{selectedColor=c;renderSwatches();};box.appendChild(s);});}
-function createTagType(){const g=curGame();if(!g)return;const name=document.getElementById("newTagName").value.trim();if(!name){alert("タグ名を入力してください。");return;}g.tagTypes.push({id:"t_"+Date.now(),name,color:selectedColor});closeTagModal();renderTagButtons();renderFilters();scheduleSave();}
+function renderTemplates(){
+  const sec=document.getElementById("tplSection"), box=document.getElementById("tplList");
+  if(!tagTemplates.length){sec.style.display="none";return;}
+  sec.style.display="block";box.innerHTML="";
+  tagTemplates.forEach((tpl,i)=>{
+    const chip=document.createElement("div");chip.className="tpl-chip";
+    chip.innerHTML='<span class="dot" style="background:'+tpl.color+'"></span>'+escapeHtml(tpl.name)+'<span class="tpl-x" title="定番から削除">×</span>';
+    chip.onclick=(e)=>{
+      if(e.target.classList.contains("tpl-x")){e.stopPropagation();tagTemplates.splice(i,1);renderTemplates();scheduleSave();return;}
+      // 定番を選んだら名前・色を反映
+      document.getElementById("newTagName").value=tpl.name;
+      selectedColor=tpl.color;renderSwatches();
+    };
+    box.appendChild(chip);
+  });
+}
+function createTagType(){
+  const g=curGame();if(!g)return;
+  const name=document.getElementById("newTagName").value.trim();
+  if(!name){alert("タグ名を入力してください。");return;}
+  g.tagTypes.push({id:"t_"+Date.now(),name,color:selectedColor});
+  // 定番登録チェックがあれば、テンプレートにも追加（同名は更新）
+  if(document.getElementById("saveTpl").checked){
+    const exist=tagTemplates.findIndex(t=>t.name===name);
+    if(exist>=0){tagTemplates[exist].color=selectedColor;}
+    else{tagTemplates.push({name,color:selectedColor});}
+  }
+  closeTagModal();renderTagButtons();renderFilters();scheduleSave();
+}
 document.getElementById("addGameBtn").onclick=openGameModal;
 document.getElementById("createGame").onclick=createGame;
 document.getElementById("cancelGame").onclick=closeGameModal;
@@ -571,6 +761,13 @@ document.getElementById("fwd5").onclick=()=>skip(5);
 document.getElementById("playpause").onclick=togglePlay;
 document.getElementById("speedBtn").onclick=cycleSpeed;
 document.getElementById("playAllBtn").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
+document.getElementById("gamesToggle").onclick=()=>{document.querySelector(".app").classList.toggle("games-collapsed");};
+document.getElementById("reorderToggle").onclick=()=>{
+  reorderMode=!reorderMode;
+  document.getElementById("reorderToggle").classList.toggle("active",reorderMode);
+  if(pending)cancelPending();
+  renderTagButtons();renderTags();
+};
 document.addEventListener("keydown",e=>{
   if(document.querySelector(".modal-bg.show"))return;
   if(e.target.tagName==="INPUT")return;
@@ -587,7 +784,7 @@ function scheduleSave(){
   if(!signedIn||!window.PlayIQ)return;
   setSyncState("saving");
   clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>{ window.PlayIQ.save(games); }, 1200);
+  saveTimer=setTimeout(()=>{ window.PlayIQ.save({games:games, templates:tagTemplates}); }, 1200);
 }
 function setSyncState(s){
   const el=document.getElementById("syncState");
@@ -611,7 +808,12 @@ window.onAuthOut=()=>{
   setSyncState("");
 };
 window.onDataLoaded=(remote)=>{
-  if(Array.isArray(remote)&&remote.length>0){ games=remote; }
+  // 新形式 {games, templates} / 旧形式（配列）両対応
+  if(Array.isArray(remote)){ if(remote.length>0)games=remote; }
+  else if(remote&&typeof remote==="object"){
+    if(Array.isArray(remote.games)&&remote.games.length>0)games=remote.games;
+    if(Array.isArray(remote.templates))tagTemplates=remote.templates;
+  }
   currentGameId=null;
   const ct=document.getElementById("curTitle");
   ct.textContent="試合を選択してください";ct.style.color="var(--txt-dim)";ct.style.fontWeight="600";
