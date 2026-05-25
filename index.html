@@ -50,9 +50,12 @@
   .tag-item .move-col span{color:var(--txt-dim);font-size:13px;line-height:1;cursor:pointer;padding:1px 3px;border-radius:4px;}
   .tag-item .move-col span:hover{color:var(--accent-2);}
   /* 長押しドラッグ並び替え */
-  .tag-item{touch-action:pan-y;}
+  .tag-item{touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;}
+  .tag-item .note-input{-webkit-user-select:text;user-select:text;}
   .tag-item.dragging{box-shadow:0 12px 30px rgba(0,0,0,.5);opacity:.95;background:var(--panel-2);border-color:var(--accent-2);}
   .drag-placeholder{border:2px dashed var(--accent-2);border-radius:11px;background:rgba(60,165,255,.06);margin:0;}
+  .tag-btn.dragging-btn{box-shadow:0 12px 30px rgba(0,0,0,.5);opacity:.95;border-color:var(--accent-2);}
+  .tag-drag-ph{border:2px dashed var(--accent-2);border-radius:11px;background:rgba(60,165,255,.06);}
   header{
     grid-area:head;display:flex;align-items:center;gap:16px;padding:14px 22px;
     border-bottom:1px solid var(--line);
@@ -121,7 +124,7 @@
   .now{font-variant-numeric:tabular-nums;font-size:13px;color:var(--txt-dim);font-weight:600;}
   .now b{color:var(--accent);font-size:15px;}
   .tag-buttons{display:flex;flex-wrap:wrap;gap:9px;}
-  .tag-btn{border:1px solid var(--line);background:var(--panel-2);color:var(--txt);cursor:pointer;padding:11px 16px;border-radius:11px;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;transition:transform .1s,filter .15s;position:relative;}
+  .tag-btn{border:1px solid var(--line);background:var(--panel-2);color:var(--txt);cursor:pointer;padding:11px 16px;border-radius:11px;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;transition:transform .1s,filter .15s;position:relative;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;}
   .tag-btn:hover{filter:brightness(1.15);transform:translateY(-1px);}
   .tag-btn:active{transform:scale(.95);}
   .tag-btn .dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
@@ -236,10 +239,7 @@
     <div class="tagdeck disabled" id="tagdeck">
       <div class="deck-head">
         <h2>タグを打つ</h2>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <button class="reorder-toggle" id="reorderToggle" title="タグの並び替え">⇄ 並び替え</button>
-          <div class="now">現在位置 <b id="nowTime">0:00</b></div>
-        </div>
+        <div class="now">現在位置 <b id="nowTime">0:00</b></div>
       </div>
       <div class="transport">
         <button class="tp-btn" id="back5">⏪ 5秒</button>
@@ -359,7 +359,6 @@ const DEFAULT_TAGTYPES=()=>[
   {id:"t3",name:"シュート",color:"#36d399"},
 ];
 let games=[],currentGameId=null,activeFilter=null,selectedColor=PALETTE[0];
-let reorderMode=false;
 let tagTemplates=[]; // 定番タグ {name,color}
 function curGame(){return games.find(g=>g.id===currentGameId)||null;}
 let player=null,pollTimer=null;
@@ -464,48 +463,100 @@ function renderTagButtons(){
     const isPending=pending&&pending.typeId===t.id;
     const isBlocked=pending&&pending.typeId!==t.id;
     b.className="tag-btn"+(isPending?" pending":"")+(isBlocked?" blocked":"");
+    b.dataset.typeId=t.id;
     if(isPending){
       b.innerHTML='<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
         ' <span class="rec">● 終了を押す</span>';
-    }else if(reorderMode){
-      // 並び替えモード：←→で順番を入れ替え
-      b.innerHTML='<span class="move" data-dir="-1" title="左へ">◀</span>'+
-        '<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
-        '<span class="move" data-dir="1" title="右へ">▶</span>';
-      b.querySelectorAll(".move").forEach(m=>{
-        m.onclick=(e)=>{e.stopPropagation();moveTagType(i,parseInt(m.dataset.dir));};
-      });
     }else{
       b.innerHTML='<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
         (i<9?'<span style="color:var(--txt-dim);font-size:11px;margin-left:3px">'+(i+1)+'</span>':"")+
         '<span class="x" title="削除">×</span>';
       b.querySelector(".x").onclick=(e)=>{e.stopPropagation();if(confirm("タグ「"+t.name+"」を削除しますか？")){g.tagTypes=g.tagTypes.filter(x=>x.id!==t.id);if(activeFilter===t.id)activeFilter=null;renderTagButtons();renderFilters();renderTags();scheduleSave();}};
     }
-    if(reorderMode){ b.onclick=()=>{}; }else{ b.onclick=()=>addTag(t.id); }
+    b.onclick=()=>{ if(b.dataset.dragging==="1")return; addTag(t.id); };
+    if(!isPending) attachTypeDrag(b);
     box.appendChild(b);
   });
   if(pending){
     const cancel=document.createElement("button");cancel.className="cancel-pending";cancel.textContent="✕ 計測キャンセル";cancel.onclick=cancelPending;box.appendChild(cancel);
-  }else if(!reorderMode){
+  }else{
     const add=document.createElement("button");add.className="add-tag";add.textContent="＋ タグを追加";add.onclick=openTagModal;box.appendChild(add);
   }
 }
-function moveTagType(idx,dir){
-  const g=curGame();if(!g)return;
-  const j=idx+dir;
-  if(j<0||j>=g.tagTypes.length)return;
-  const tmp=g.tagTypes[idx];g.tagTypes[idx]=g.tagTypes[j];g.tagTypes[j]=tmp;
-  renderTagButtons();renderFilters();scheduleSave();
+/* タグ種別ボタンの長押しドラッグ並び替え（横方向） */
+function attachTypeDrag(btn){
+  let pressTimer=null,dragging=false,startX=0,startY=0,box=null,placeholder=null;
+  const LONG_PRESS=400;
+  function onDown(e){
+    if(e.target.classList.contains("x"))return;
+    const pt=e.touches?e.touches[0]:e;
+    startX=pt.clientX;startY=pt.clientY;
+    pressTimer=setTimeout(()=>beginDrag(),LONG_PRESS);
+    document.addEventListener("touchmove",onMove,{passive:false});
+    document.addEventListener("mousemove",onMove);
+    document.addEventListener("touchend",onUp);
+    document.addEventListener("mouseup",onUp);
+  }
+  function beginDrag(){
+    dragging=true;btn.dataset.dragging="1";
+    box=document.getElementById("tagButtons");
+    if(navigator.vibrate)navigator.vibrate(20);
+    placeholder=document.createElement("div");
+    placeholder.className="tag-drag-ph";
+    placeholder.style.width=btn.offsetWidth+"px";
+    placeholder.style.height=btn.offsetHeight+"px";
+    btn.parentNode.insertBefore(placeholder,btn.nextSibling);
+    btn.classList.add("dragging-btn");
+    btn.style.width=btn.offsetWidth+"px";
+  }
+  function onMove(e){
+    if(pressTimer&&!dragging){
+      const pt=e.touches?e.touches[0]:e;
+      if(Math.abs(pt.clientX-startX)>10||Math.abs(pt.clientY-startY)>10){clearTimeout(pressTimer);pressTimer=null;cleanup();}
+      return;
+    }
+    if(!dragging)return;
+    e.preventDefault();
+    const pt=e.touches?e.touches[0]:e;
+    btn.style.position="fixed";btn.style.zIndex="9999";btn.style.pointerEvents="none";
+    btn.style.left=(pt.clientX-btn.offsetWidth/2)+"px";
+    btn.style.top=(pt.clientY-btn.offsetHeight/2)+"px";
+    // 挿入位置を決定（横並びなので中心X比較）
+    const others=[...box.querySelectorAll(".tag-btn:not(.dragging-btn), .add-tag")];
+    let placed=false;
+    for(const other of others){
+      const r=other.getBoundingClientRect();
+      if(pt.clientX < r.left+r.width/2){ box.insertBefore(placeholder,other); placed=true; break; }
+    }
+    if(!placed){ const add=box.querySelector(".add-tag"); box.insertBefore(placeholder, add||null); }
+  }
+  function onUp(){
+    clearTimeout(pressTimer);pressTimer=null;
+    if(dragging){
+      box.insertBefore(btn,placeholder);placeholder.remove();
+      btn.classList.remove("dragging-btn");
+      btn.style.position="";btn.style.zIndex="";btn.style.left="";btn.style.top="";btn.style.width="";btn.style.pointerEvents="";
+      saveTypeOrder();
+      setTimeout(()=>{btn.dataset.dragging="";},50);
+    }
+    cleanup();
+  }
+  function cleanup(){
+    document.removeEventListener("touchmove",onMove);
+    document.removeEventListener("mousemove",onMove);
+    document.removeEventListener("touchend",onUp);
+    document.removeEventListener("mouseup",onUp);
+    dragging=false;
+  }
+  btn.addEventListener("touchstart",onDown,{passive:true});
+  btn.addEventListener("mousedown",onDown);
 }
-function moveTagItem(shown,idx,dir){
+function saveTypeOrder(){
   const g=curGame();if(!g)return;
-  const j=idx+dir;
-  if(j<0||j>=shown.length)return;
-  // 現在の表示順をベースに手動順を作り、隣と入れ替える
-  const order=shown.map(t=>t.id);
-  const tmp=order[idx];order[idx]=order[j];order[j]=tmp;
-  g.manualOrder=order;
-  renderTags();scheduleSave();
+  const box=document.getElementById("tagButtons");
+  const ids=[...box.querySelectorAll(".tag-btn")].map(el=>el.dataset.typeId).filter(Boolean);
+  g.tagTypes.sort((a,b)=>ids.indexOf(a.id)-ids.indexOf(b.id));
+  renderFilters();scheduleSave();
 }
 function renderFilters(){
   const box=document.getElementById("filters");box.innerHTML="";
@@ -762,12 +813,6 @@ document.getElementById("playpause").onclick=togglePlay;
 document.getElementById("speedBtn").onclick=cycleSpeed;
 document.getElementById("playAllBtn").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
 document.getElementById("gamesToggle").onclick=()=>{document.querySelector(".app").classList.toggle("games-collapsed");};
-document.getElementById("reorderToggle").onclick=()=>{
-  reorderMode=!reorderMode;
-  document.getElementById("reorderToggle").classList.toggle("active",reorderMode);
-  if(pending)cancelPending();
-  renderTagButtons();renderTags();
-};
 document.addEventListener("keydown",e=>{
   if(document.querySelector(".modal-bg.show"))return;
   if(e.target.tagName==="INPUT")return;
