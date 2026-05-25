@@ -279,7 +279,7 @@
     <label>試合名</label>
     <input type="text" id="gName" placeholder="例：○○中学戦">
     <label>日付</label>
-    <input type="text" id="gDate" placeholder="例：令和8年5月23日">
+    <input type="date" id="gDate">
     <label>YouTube URL</label>
     <input type="text" id="gUrl" placeholder="https://youtu.be/...">
     <div class="modal-actions">
@@ -381,9 +381,24 @@ function startPoll(){clearInterval(pollTimer);pollTimer=setInterval(()=>{if(play
 function fmt(s){s=Math.floor(s||0);const m=Math.floor(s/60),sec=s%60;return m+":"+String(sec).padStart(2,"0");}
 function openGameModal(){document.getElementById("gName").value="";document.getElementById("gDate").value="";document.getElementById("gUrl").value="";document.getElementById("gameModalBg").classList.add("show");document.getElementById("gName").focus();}
 function closeGameModal(){document.getElementById("gameModalBg").classList.remove("show");}
+function toWareki(ymd){
+  // "YYYY-MM-DD" → "令和X年M月D日"。変換できなければそのまま返す。
+  if(!ymd)return "";
+  const m=ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m)return ymd;
+  const y=+m[1], mo=+m[2], d=+m[3];
+  // 令和：2019/5/1〜
+  if(y>2019 || (y===2019 && mo>=5)){
+    const r=y-2018;
+    return "令和"+(r===1?"元":r)+"年"+mo+"月"+d+"日";
+  }
+  // それ以前は西暦表記でフォールバック
+  return y+"年"+mo+"月"+d+"日";
+}
 function createGame(){
   const name=document.getElementById("gName").value.trim();
-  const date=document.getElementById("gDate").value.trim();
+  const dateRaw=document.getElementById("gDate").value.trim();
+  const date=toWareki(dateRaw);
   const url=document.getElementById("gUrl").value.trim();
   if(!name){alert("試合名を入力してください。");return;}
   const vid=extractId(url);
