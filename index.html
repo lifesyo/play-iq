@@ -18,7 +18,8 @@
     --ok:#36d399;--warn:#fbbd23;--radius:14px;--shadow:0 8px 30px rgba(0,0,0,.45);
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  html,body{height:100%;touch-action:manipulation;}
+  html,body{height:100%;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;}
+  input,textarea{-webkit-user-select:text;user-select:text;}
   body{
     background:
       radial-gradient(1200px 600px at 80% -10%, rgba(60,165,255,.07), transparent 60%),
@@ -486,7 +487,7 @@ function renderTagButtons(){
 /* タグ種別ボタンの長押しドラッグ並び替え（横方向） */
 function attachTypeDrag(btn){
   let pressTimer=null,dragging=false,startX=0,startY=0,box=null,placeholder=null;
-  const LONG_PRESS=400;
+  const LONG_PRESS=250;
   function onDown(e){
     if(e.target.classList.contains("x"))return;
     const pt=e.touches?e.touches[0]:e;
@@ -626,7 +627,7 @@ function renderTags(){
 /* ===== 長押しドラッグで右タグ一覧を並び替え ===== */
 function attachDragSort(item){
   let pressTimer=null, dragging=false, startY=0, placeholder=null, clone=null, list=null;
-  const LONG_PRESS=400;
+  const LONG_PRESS=250;
   function onDown(e){
     // メモ欄・削除ボタンの上では開始しない
     if(e.target.classList.contains("note-input")||e.target.classList.contains("del"))return;
