@@ -451,6 +451,16 @@ function mountVideo(videoId){
   if(player){player.loadVideoById(videoId);startPoll();return;}
   player=new YT.Player("player",{videoId,playerVars:{rel:0,modestbranding:1,playsinline:1},events:{onReady:()=>{startPoll();}}});
 }
+// 書き出しモード用：controlsの有無を指定してプレイヤーを生成する
+// （事前に recreatePlayerDiv() で #player のdivをクリーンにしておくこと）
+function rebuildPlayer(videoId,controls,onReadyCb){
+  document.getElementById("playerEmpty").style.display="none";
+  player=new YT.Player("player",{
+    videoId,
+    playerVars:{rel:0,modestbranding:1,playsinline:1,controls:controls,disablekb:1,fs:0,iv_load_policy:3},
+    events:{onReady:()=>{startPoll(); if(onReadyCb) onReadyCb();}}
+  });
+}
 function startPoll(){clearInterval(pollTimer);pollTimer=setInterval(()=>{if(playerReady()){document.getElementById("nowTime").textContent=fmt(player.getCurrentTime());}},250);}
 function fmt(s){s=Math.floor(s||0);const m=Math.floor(s/60),sec=s%60;return m+":"+String(sec).padStart(2,"0");}
 function openGameModal(){document.getElementById("gName").value="";document.getElementById("gDate").value="";document.getElementById("gUrl").value="";document.getElementById("gameModalBg").classList.add("show");document.getElementById("gName").focus();}
@@ -723,6 +733,22 @@ function openExportMode(){
   document.getElementById("exportIntro").classList.add("show");
   document.getElementById("exportBar").classList.add("hide");
   document.getElementById("exportCaption").classList.remove("show");
+  // 操作UI（中央ロゴ含む）を消すため、controls:0でプレイヤーを作り直す
+  recreatePlayerDiv();
+  rebuildPlayer(g.videoId,0);
+}
+
+// #player のdivを作り直す（destroy後にYTが書き換えた要素をクリーンにする）
+function recreatePlayerDiv(){
+  const wrap=document.getElementById("playerWrap");
+  const old=document.getElementById("player");
+  try{ if(player&&player.destroy) player.destroy(); }catch(e){}
+  player=null;
+  if(old) old.remove();
+  const fresh=document.createElement("div");
+  fresh.id="player";
+  // playerEmptyの直前に挿入して元の位置を保つ
+  wrap.insertBefore(fresh, wrap.firstChild);
 }
 
 function startExportPlayback(){
@@ -763,7 +789,6 @@ function exportPlayClip(i){
     exportRun.timer=setTimeout(()=>exportPlayClip(i),300);return;
   }
   const start=(e!==undefined)?s:Math.max(0,s-CLIP_LEAD);
-  flashMask(); // クリップ切替の一瞬、中央ロゴを黒幕で隠す
   try{player.mute();}catch(err){}
   player.seekTo(start,true);player.playVideo();
   if(e!==undefined){
@@ -806,6 +831,10 @@ function closeExportMode(){
   document.getElementById("exportCaption").classList.remove("show");
   document.getElementById("exportIntro").classList.remove("show");
   document.getElementById("exportCountdown").classList.remove("show");
+  document.getElementById("exportCtrl").classList.remove("visible");
+  // 操作UIありの通常プレイヤーに戻す
+  const g=curGame();
+  if(g){ recreatePlayerDiv(); rebuildPlayer(g.videoId,1); }
 }
 
 /* 手動操作：最初から／前のクリップ／次のクリップ */
