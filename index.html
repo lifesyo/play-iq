@@ -163,79 +163,6 @@
   .swatch.sel{border-color:#fff;transform:scale(1.12);}
   .modal-actions{display:flex;gap:10px;}
   .modal-actions .btn{flex:1;justify-content:center;text-align:center;}
-  /* ---- 書き出しモード（全画面・テロップ付き自動連続再生） ---- */
-  .export-btn{background:var(--panel-2);color:var(--accent-2);border:1px solid var(--accent-2);cursor:pointer;padding:8px 12px;border-radius:9px;font-weight:700;font-size:13px;transition:.12s;white-space:nowrap;}
-  .export-btn:hover{background:rgba(60,165,255,.12);}
-  /* 中央パネル（tagdeck）内の連続再生／書き出しバー：iPadでも必ず見える位置 */
-  .deck-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:13px;border-top:1px solid var(--line);}
-  .deck-actions .da-label{font-size:11px;font-weight:700;color:var(--txt-dim);letter-spacing:.5px;text-transform:uppercase;margin-right:2px;}
-  .deck-actions .da-filter{font-size:12px;font-weight:700;color:var(--txt);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;display:flex;align-items:center;gap:6px;}
-  .deck-actions .da-filter .dot{width:8px;height:8px;border-radius:50%;}
-  .deck-actions .da-info{font-size:11.5px;color:var(--txt-dim);font-weight:600;font-variant-numeric:tabular-nums;}
-  .deck-actions .playall-btn{background:var(--accent);color:#fff;border:none;cursor:pointer;padding:9px 15px;border-radius:9px;font-weight:700;font-size:13px;transition:.12s;}
-  .deck-actions .playall-btn:hover{filter:brightness(1.1);}
-  .deck-actions .playall-btn.playing{background:var(--warn);color:#1a1205;}
-  .deck-actions .export-btn{padding:9px 15px;}
-  .export-caption{position:absolute;left:0;right:0;bottom:8%;z-index:100;display:flex;justify-content:center;pointer-events:none;opacity:0;transition:opacity .35s;}
-  .export-caption.show{opacity:1;}
-  .export-caption .cap-inner{display:flex;align-items:center;gap:14px;background:rgba(8,11,16,.82);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:12px 22px;box-shadow:0 10px 40px rgba(0,0,0,.6);}
-  .export-caption .cap-num{font-variant-numeric:tabular-nums;font-size:18px;font-weight:800;color:#fff;letter-spacing:.5px;}
-  .export-caption .cap-num small{color:var(--txt-dim);font-size:13px;font-weight:700;}
-  .export-caption .cap-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
-  .export-caption .cap-name{font-size:20px;font-weight:800;color:#fff;letter-spacing:.3px;}
-  /* 操作バー（録画には映らないよう、説明上は上部の細いバー。録画開始前/終了時の操作用） */
-  .export-bar{position:absolute;top:0;left:0;right:0;z-index:120;display:flex;align-items:center;gap:14px;padding:14px 20px;background:linear-gradient(180deg,rgba(0,0,0,.75),transparent);transition:opacity .3s;}
-  .export-bar.hide{opacity:0;pointer-events:none;}
-  .export-bar .ex-title{flex:1;font-size:14px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .export-bar .ex-progress{font-variant-numeric:tabular-nums;font-size:13px;font-weight:700;color:var(--accent-2);}
-  .export-bar .ex-btn{border:none;cursor:pointer;font-weight:700;font-size:13px;padding:8px 16px;border-radius:9px;color:#fff;background:var(--accent);transition:.12s;}
-  .export-bar .ex-btn:hover{filter:brightness(1.1);}
-  .export-bar .ex-btn.ghost{background:rgba(255,255,255,.12);}
-  /* スタート前の案内パネル */
-  .export-intro{position:absolute;inset:0;z-index:140;display:grid;place-items:center;background:rgba(5,7,11,.78);backdrop-filter:blur(4px);text-align:center;padding:24px;}
-  .export-intro .intro-card{max-width:440px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:var(--shadow);}
-  .export-intro h3{font-size:19px;font-weight:800;margin-bottom:14px;color:#fff;}
-  .export-intro p{font-size:13.5px;color:var(--txt-dim);line-height:1.85;margin-bottom:10px;}
-  .export-intro p b{color:var(--txt);}
-  .export-intro ol{text-align:left;font-size:13px;color:var(--txt-dim);line-height:1.9;margin:14px 0 20px;padding-left:20px;}
-  .export-intro ol b{color:var(--accent-2);}
-  .export-intro .intro-meta{font-size:12.5px;color:var(--txt-dim);margin-bottom:18px;}
-  .export-intro .intro-meta b{color:var(--accent);font-size:14px;}
-  .export-intro .intro-actions{display:flex;gap:10px;}
-  .export-intro .intro-actions .btn{flex:1;justify-content:center;text-align:center;padding:13px;}
-  .export-countdown{position:absolute;inset:0;z-index:160;display:none;place-items:center;background:rgba(0,0,0,.55);}
-  .export-countdown.show{display:grid;}
-  .export-countdown .cd-num{font-size:120px;font-weight:800;color:#fff;text-shadow:0 4px 30px rgba(0,0,0,.6);font-variant-numeric:tabular-nums;animation:cdpop .9s ease-out;}
-  /* 常駐の終了ボタン（再生中も必ず押せるよう最前面に固定） */
-  .export-quit{position:absolute;top:14px;right:14px;z-index:200;width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;background:rgba(0,0,0,.5);color:#fff;font-size:18px;font-weight:800;line-height:1;display:grid;place-items:center;transition:.12s;}
-  .export-quit:hover{background:rgba(255,90,60,.85);}
-  /* 透明な膜：再生面へのタップを遮断し、中央の再生/一時停止ロゴが出ないようにする */
-  .export-shield{position:absolute;inset:0;z-index:50;background:transparent;touch-action:none;-webkit-user-select:none;user-select:none;}
-  /* クリップ切替時の一瞬の目隠し（中央ロゴを覆う） */
-  .export-mask{position:absolute;inset:0;z-index:90;background:#000;opacity:0;pointer-events:none;transition:opacity .12s;}
-  .export-mask.show{opacity:1;}
-  /* 手動操作ボタン（右下・普段は隠れ、タップで数秒だけ出る） */
-  .export-ctrl{position:absolute;right:14px;bottom:14px;z-index:130;display:flex;gap:8px;opacity:0;transform:translateY(6px);pointer-events:none;transition:opacity .25s,transform .25s;}
-  .export-ctrl.visible{opacity:1;transform:translateY(0);pointer-events:auto;}
-  .export-ctrl .exc-btn{border:none;cursor:pointer;font-weight:700;font-size:13px;padding:9px 13px;border-radius:10px;color:#fff;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);transition:.12s;white-space:nowrap;}
-  .export-ctrl .exc-btn:hover{background:rgba(255,90,60,.85);}
-  .export-ctrl .exc-btn:active{transform:scale(.95);}
-  @keyframes cdpop{0%{transform:scale(.5);opacity:0;}30%{transform:scale(1.1);opacity:1;}100%{transform:scale(1);opacity:1;}}
-  /* メインプレイヤーをそのまま全画面化（別プレイヤーを作らず競合を避ける） */
-  .player-wrap.exporting{position:fixed;inset:0;z-index:9000;width:100vw;height:100vh;aspect-ratio:auto;border-radius:0;border:none;overflow:hidden;touch-action:manipulation;}
-  .player-wrap.exporting #player{width:100%;height:100%;position:relative;z-index:1;}
-  /* 書き出し用オーバーレイ：通常時は隠し、全画面化時のみ前面表示 */
-  .export-caption,.export-bar,.export-countdown,.export-intro,.export-quit,.export-shield,.export-ctrl,.export-mask{display:none;}
-  .player-wrap.exporting .export-shield{display:block;}
-  .player-wrap.exporting .export-mask{display:block;}
-  .player-wrap.exporting .export-ctrl{display:flex;}
-  .player-wrap.exporting .export-caption{display:flex;}
-  .player-wrap.exporting .export-bar{display:flex;}
-  .player-wrap.exporting .export-quit{display:grid;}
-  .player-wrap.exporting .export-countdown{display:none;}
-  .player-wrap.exporting .export-countdown.show{display:grid;}
-  .player-wrap.exporting .export-intro{display:none;}
-  .player-wrap.exporting .export-intro.show{display:grid;}
 </style>
 </head>
 <body>
@@ -267,52 +194,12 @@
     <div class="games-list" id="gamesList"></div>
   </div>
   <main>
-    <div class="player-wrap" id="playerWrap">
+    <div class="player-wrap">
       <div id="player"></div>
       <div class="player-empty" id="playerEmpty">
         <div><b>試合を追加して始めましょう</b>
         左上の ＋ から、試合名・日付・YouTube の URL を入力してください。<br>
         動画は限定公開（Unlisted）でOKです。</div>
-      </div>
-      <!-- 書き出しモード用オーバーレイ（全画面化時のみ表示。メインプレイヤーをそのまま使う） -->
-      <div class="export-shield" id="exportShield"></div>
-      <div class="export-mask" id="exportMask"></div>
-      <div class="export-ctrl" id="exportCtrl">
-        <button class="exc-btn" id="excRestart" title="最初から">⏮ 最初</button>
-        <button class="exc-btn" id="excPrev" title="前のクリップ">◀ 前</button>
-        <button class="exc-btn" id="excNext" title="次のクリップ">次 ▶</button>
-      </div>
-      <button class="export-quit" id="exQuitBtn" title="書き出しモードを終了">✕</button>
-      <div class="export-caption" id="exportCaption">
-        <div class="cap-inner">
-          <span class="cap-num" id="capNum"></span>
-          <span class="cap-dot" id="capDot"></span>
-          <span class="cap-name" id="capName"></span>
-        </div>
-      </div>
-      <div class="export-bar" id="exportBar">
-        <span class="ex-title" id="exTitle"></span>
-        <span class="ex-progress" id="exProgress"></span>
-        <button class="ex-btn ghost" id="exCloseBtn">✕ 終了</button>
-      </div>
-      <div class="export-countdown" id="exportCountdown"><span class="cd-num" id="cdNum">3</span></div>
-      <div class="export-intro" id="exportIntro">
-        <div class="intro-card">
-          <h3>⎙ 書き出しモード</h3>
-          <p>選択中のタグ区間を、<b>全画面・テロップ付き</b>で頭から順に自動再生します。iPhone / iPad の<b>画面収録</b>で録画してカメラロールに保存してください。</p>
-          <div class="intro-meta" id="introMeta"></div>
-          <ol>
-            <li>コントロールセンターから<b>画面収録</b>を開始</li>
-            <li>下の<b>「再生スタート」</b>を押す（3秒カウント後に開始）</li>
-            <li>全クリップが流れ終わると<b>自動で停止</b></li>
-            <li>画面収録を止めて完了</li>
-          </ol>
-          <p style="font-size:12px;color:var(--warn)">※ iPad では自動再生のため<b>音声はミュート</b>になります。</p>
-          <div class="intro-actions">
-            <button class="btn ghost" id="introCancel">キャンセル</button>
-            <button class="btn" id="introStart">▶ 再生スタート</button>
-          </div>
-        </div>
       </div>
     </div>
     <div class="tagdeck disabled" id="tagdeck">
@@ -328,13 +215,6 @@
       </div>
       <div class="tag-buttons" id="tagButtons"></div>
       <div class="hint">タグは<b>2回押し</b>で区間を記録します。プレー開始時に1回押す→終了時にもう一度同じタグを押すと、その区間が記録されます。<kbd>1</kbd>〜<kbd>9</kbd>でタグ打ち、<kbd>,</kbd>／<kbd>.</kbd>で5秒戻る／進む。連続再生はこの区間どおりに再生されます。</div>
-      <div class="deck-actions" id="deckActions" style="display:none">
-        <span class="da-label">再生</span>
-        <span class="da-filter" id="deckFilter">すべて</span>
-        <button class="playall-btn" id="playAllBtn2">▶ 連続再生</button>
-        <button class="export-btn" id="exportBtn2" title="全画面・テロップ付きで自動連続再生（画面収録用）">⎙ 書き出しモード</button>
-        <span class="da-info" id="playallInfo2"></span>
-      </div>
     </div>
   </main>
   <aside>
@@ -345,7 +225,6 @@
       <div class="playall-bar" id="playallBar" style="display:none">
         <button class="playall-btn" id="playAllBtn">▶ 連続再生</button>
         <span class="playall-info" id="playallInfo"></span>
-        <button class="export-btn" id="exportBtn" title="全画面・テロップ付きで自動連続再生（画面収録用）">⎙ 書き出しモード</button>
       </div>
     </div>
     <div class="tag-list" id="tagList">
@@ -450,16 +329,6 @@ function mountVideo(videoId){
   document.getElementById("playerEmpty").style.display="none";
   if(player){player.loadVideoById(videoId);startPoll();return;}
   player=new YT.Player("player",{videoId,playerVars:{rel:0,modestbranding:1,playsinline:1},events:{onReady:()=>{startPoll();}}});
-}
-// 書き出しモード用：controlsの有無を指定してプレイヤーを生成する
-// （事前に recreatePlayerDiv() で #player のdivをクリーンにしておくこと）
-function rebuildPlayer(videoId,controls,onReadyCb){
-  document.getElementById("playerEmpty").style.display="none";
-  player=new YT.Player("player",{
-    videoId,
-    playerVars:{rel:0,modestbranding:1,playsinline:1,controls:controls,disablekb:1,fs:0,iv_load_policy:3},
-    events:{onReady:()=>{startPoll(); if(onReadyCb) onReadyCb();}}
-  });
 }
 function startPoll(){clearInterval(pollTimer);pollTimer=setInterval(()=>{if(playerReady()){document.getElementById("nowTime").textContent=fmt(player.getCurrentTime());}},250);}
 function fmt(s){s=Math.floor(s||0);const m=Math.floor(s/60),sec=s%60;return m+":"+String(sec).padStart(2,"0");}
@@ -598,19 +467,11 @@ function renderSummary(){
 function renderTags(){
   const list=document.getElementById("tagList");const g=curGame();
   const bar=document.getElementById("playallBar");
-  if(!g){list.innerHTML='<div class="empty-list">試合を選ぶとタグが表示されます。</div>';document.getElementById("countPill").textContent="0 件";document.getElementById("summary").innerHTML="";bar.style.display="none";document.getElementById("deckActions").style.display="none";return;}
+  if(!g){list.innerHTML='<div class="empty-list">試合を選ぶとタグが表示されます。</div>';document.getElementById("countPill").textContent="0 件";document.getElementById("summary").innerHTML="";bar.style.display="none";return;}
   renderSummary();
   const shown=g.tags.filter(t=>activeFilter===null||t.typeId===activeFilter).slice().sort((a,b)=>tagStart(a)-tagStart(b));
   document.getElementById("countPill").textContent=shown.length+" 件";
   bar.style.display=shown.length>0?"flex":"none";
-  // 中央パネルの再生バーも同期（iPadで必ず見える）
-  const deckActions=document.getElementById("deckActions");
-  deckActions.style.display=shown.length>0?"flex":"none";
-  if(shown.length>0){
-    const df=document.getElementById("deckFilter");
-    if(activeFilter===null){df.innerHTML='すべて（'+shown.length+'件）';}
-    else{const ty=typeById(activeFilter);df.innerHTML='<span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+'（'+shown.length+'件）';}
-  }
   if(shown.length===0){list.innerHTML='<div class="empty-list">'+(g.tags.length===0?"まだタグがありません。<br>動画を再生して、プレーにタグを打ってみましょう。":"このタグの記録はありません。")+'</div>';return;}
   list.innerHTML="";
   shown.forEach(t=>{
@@ -681,7 +542,6 @@ function playClip(i){
   const t=playAll.queue[i];
   const e=tagEnd(t);
   document.getElementById("playallInfo").textContent=(i+1)+" / "+playAll.queue.length;
-  const i2=document.getElementById("playallInfo2");if(i2)i2.textContent=(i+1)+" / "+playAll.queue.length;
   if(e!==undefined){
     // 区間タグ：開始へ飛んで再生し、終了点に達したら次へ
     const start=tagStart(t);
@@ -699,202 +559,16 @@ function playClip(i){
 }
 function updatePlayAllBtn(){
   const btn=document.getElementById("playAllBtn");
-  const btn2=document.getElementById("playAllBtn2");
-  if(playAll.on){
-    btn.textContent="■ 停止";btn.classList.add("playing");
-    if(btn2){btn2.textContent="■ 停止";btn2.classList.add("playing");}
-  }else{
-    btn.textContent="▶ 連続再生";btn.classList.remove("playing");document.getElementById("playallInfo").textContent="";
-    if(btn2){btn2.textContent="▶ 連続再生";btn2.classList.remove("playing");}
-    const i2=document.getElementById("playallInfo2");if(i2)i2.textContent="";
-  }
+  if(playAll.on){btn.textContent="■ 停止";btn.classList.add("playing");}
+  else{btn.textContent="▶ 連続再生";btn.classList.remove("playing");document.getElementById("playallInfo").textContent="";}
 }
-
-/* ---------- 書き出しモード（メインプレイヤーを全画面化して使う） ---------- */
-let exportRun={on:false,queue:[],idx:0,timer:null,watch:null,capTimer:null};
-const CAP_HOLD=2.2; // テロップ表示秒数
-
-function openExportMode(){
-  const g=curGame();if(!g)return;
-  if(!playerReady()){alert("動画の読み込みを待ってください。");return;}
-  const list=g.tags.filter(t=>activeFilter===null||t.typeId===activeFilter).slice().sort((a,b)=>tagStart(a)-tagStart(b));
-  if(list.length===0){alert("再生できるタグがありません。");return;}
-  exportRun.queue=list;exportRun.idx=0;
-  // 案内パネルにメタ情報を表示
-  const filterName=activeFilter===null?"すべてのタグ":typeById(activeFilter).name;
-  let total=0;list.forEach(t=>{const s=tagStart(t),e=tagEnd(t);total+=(e!==undefined?(e-s):CLIP_LEN);});
-  document.getElementById("introMeta").innerHTML=
-    '<b>'+list.length+'</b> クリップ ／ '+filterName+' ／ 合計 約'+Math.round(total)+'秒';
-  document.getElementById("exTitle").textContent=g.name+(g.date?("　"+g.date):"");
-  document.getElementById("exProgress").textContent="";
-  // メインプレイヤーを全画面化（別プレイヤーは作らない＝競合しない）
-  if(player&&player.pauseVideo)player.pauseVideo();
-  document.getElementById("playerWrap").classList.add("exporting");
-  document.getElementById("exportIntro").classList.add("show");
-  document.getElementById("exportBar").classList.add("hide");
-  document.getElementById("exportCaption").classList.remove("show");
-  // 操作UI（中央ロゴ含む）を消すため、controls:0でプレイヤーを作り直す
-  recreatePlayerDiv();
-  rebuildPlayer(g.videoId,0);
-}
-
-// #player のdivを作り直す（destroy後にYTが書き換えた要素をクリーンにする）
-function recreatePlayerDiv(){
-  const wrap=document.getElementById("playerWrap");
-  const old=document.getElementById("player");
-  try{ if(player&&player.destroy) player.destroy(); }catch(e){}
-  player=null;
-  if(old) old.remove();
-  const fresh=document.createElement("div");
-  fresh.id="player";
-  // playerEmptyの直前に挿入して元の位置を保つ
-  wrap.insertBefore(fresh, wrap.firstChild);
-}
-
-function startExportPlayback(){
-  // iOS対策：ユーザー操作（このボタン押下）の文脈でミュート再生を一度キックし、
-  // 自動再生の許可を得ておく。これでカウントダウン後の再生がブロックされない。
-  try{
-    if(playerReady()){ player.mute(); player.playVideo(); }
-  }catch(e){}
-  const cd=document.getElementById("exportCountdown");
-  const cdNum=document.getElementById("cdNum");
-  document.getElementById("exportIntro").classList.remove("show");
-  let n=3;cdNum.textContent=n;cd.classList.add("show");
-  const tick=()=>{
-    n--;
-    if(n>=1){cdNum.style.animation="none";void cdNum.offsetWidth;cdNum.style.animation="";cdNum.textContent=n;setTimeout(tick,1000);}
-    else{cd.classList.remove("show");beginExportClips();}
-  };
-  setTimeout(tick,1000);
-}
-
-function beginExportClips(){
-  exportRun.on=true;exportRun.idx=0;
-  document.getElementById("exportBar").classList.add("hide"); // 録画には操作バーを映さない
-  exportPlayClip(0);
-}
-
-function exportPlayClip(i){
-  if(!exportRun.on)return;
-  clearTimeout(exportRun.timer);clearInterval(exportRun.watch);clearTimeout(exportRun.capTimer);
-  if(i>=exportRun.queue.length){finishExportPlayback();return;}
-  exportRun.idx=i;
-  const t=exportRun.queue[i];
-  const ty=typeById(t.typeId);
-  const s=tagStart(t), e=tagEnd(t);
-  document.getElementById("exProgress").textContent=(i+1)+" / "+exportRun.queue.length;
-  showCaption(i+1,exportRun.queue.length,ty);
-  if(!playerReady()){
-    exportRun.timer=setTimeout(()=>exportPlayClip(i),300);return;
-  }
-  const start=(e!==undefined)?s:Math.max(0,s-CLIP_LEAD);
-  try{player.mute();}catch(err){}
-  player.seekTo(start,true);player.playVideo();
-  if(e!==undefined){
-    exportRun.watch=setInterval(()=>{
-      if(!exportRun.on){clearInterval(exportRun.watch);return;}
-      if(playerReady() && player.getCurrentTime()>=e){clearInterval(exportRun.watch);exportPlayClip(i+1);}
-    },150);
-  }else{
-    exportRun.timer=setTimeout(()=>exportPlayClip(i+1),CLIP_LEN*1000);
-  }
-}
-
-function showCaption(num,total,ty){
-  const cap=document.getElementById("exportCaption");
-  document.getElementById("capNum").innerHTML=num+' <small>/ '+total+'</small>';
-  document.getElementById("capDot").style.background=ty.color;
-  document.getElementById("capName").textContent=ty.name;
-  cap.classList.add("show");
-  clearTimeout(exportRun.capTimer);
-  exportRun.capTimer=setTimeout(()=>cap.classList.remove("show"),CAP_HOLD*1000);
-}
-
-function finishExportPlayback(){
-  exportRun.on=false;
-  clearTimeout(exportRun.timer);clearInterval(exportRun.watch);clearTimeout(exportRun.capTimer);
-  if(playerReady())try{player.pauseVideo();}catch(e){}
-  const cap=document.getElementById("exportCaption");
-  document.getElementById("capNum").innerHTML="✓";
-  document.getElementById("capDot").style.background="var(--ok)";
-  document.getElementById("capName").textContent="書き出し完了";
-  cap.classList.add("show");
-  document.getElementById("exportBar").classList.remove("hide");
-}
-
-function closeExportMode(){
-  exportRun.on=false;
-  clearTimeout(exportRun.timer);clearInterval(exportRun.watch);clearTimeout(exportRun.capTimer);
-  if(playerReady())try{player.pauseVideo();player.unMute();}catch(e){}
-  document.getElementById("playerWrap").classList.remove("exporting");
-  document.getElementById("exportCaption").classList.remove("show");
-  document.getElementById("exportIntro").classList.remove("show");
-  document.getElementById("exportCountdown").classList.remove("show");
-  document.getElementById("exportCtrl").classList.remove("visible");
-  // 操作UIありの通常プレイヤーに戻す
-  const g=curGame();
-  if(g){ recreatePlayerDiv(); rebuildPlayer(g.videoId,1); }
-}
-
-/* 手動操作：最初から／前のクリップ／次のクリップ */
-function exportRestart(){ if(exportRun.queue.length){exportRun.on=true;exportPlayClip(0);} }
-function exportPrev(){ if(exportRun.queue.length){exportRun.on=true;exportPlayClip(Math.max(0,exportRun.idx-1));} }
-function exportNext(){ if(exportRun.queue.length){exportRun.on=true;exportPlayClip(exportRun.idx+1);} }
-
-/* シールドをタップすると操作ボタンを数秒だけ表示 */
-let ctrlHideTimer=null;
-function revealCtrl(){
-  const c=document.getElementById("exportCtrl");
-  c.classList.add("visible");
-  clearTimeout(ctrlHideTimer);
-  ctrlHideTimer=setTimeout(()=>c.classList.remove("visible"),3000);
-}
-
-/* クリップ切替時、中央ロゴが出る一瞬を黒幕で隠す */
-let maskTimer=null;
-function flashMask(){
-  const m=document.getElementById("exportMask");
-  if(!m)return;
-  m.classList.add("show");
-  clearTimeout(maskTimer);
-  maskTimer=setTimeout(()=>m.classList.remove("show"),650);
-}
-
 
 document.getElementById("back5").onclick=()=>skip(-5);
 document.getElementById("fwd5").onclick=()=>skip(5);
 document.getElementById("playpause").onclick=togglePlay;
 document.getElementById("speedBtn").onclick=cycleSpeed;
 document.getElementById("playAllBtn").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
-document.getElementById("playAllBtn2").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
-document.getElementById("exportBtn").onclick=()=>{ if(playAll.on)stopPlayAll(); openExportMode(); };
-document.getElementById("exportBtn2").onclick=()=>{ if(playAll.on)stopPlayAll(); openExportMode(); };
-document.getElementById("introStart").onclick=startExportPlayback;
-document.getElementById("introCancel").onclick=closeExportMode;
-document.getElementById("exQuitBtn").onclick=closeExportMode;
-// シールドをタップ→操作ボタンを数秒表示
-document.getElementById("exportShield").onclick=revealCtrl;
-// ダブルタップによる拡大を防ぐ（iOS Safari対策）
-(function(){
-  const sh=document.getElementById("exportShield");
-  let lastTouch=0;
-  sh.addEventListener("touchend",(e)=>{
-    const now=Date.now();
-    if(now-lastTouch<=350){ e.preventDefault(); } // ダブルタップ判定で拡大を抑制
-    lastTouch=now;
-  },{passive:false});
-})();
-// 各操作ボタン（押したら動作＋表示を維持）
-document.getElementById("excRestart").onclick=(e)=>{e.stopPropagation();exportRestart();revealCtrl();};
-document.getElementById("excPrev").onclick=(e)=>{e.stopPropagation();exportPrev();revealCtrl();};
-document.getElementById("excNext").onclick=(e)=>{e.stopPropagation();exportNext();revealCtrl();};
-document.getElementById("exCloseBtn").onclick=closeExportMode;
 document.addEventListener("keydown",e=>{
-  if(document.getElementById("playerWrap").classList.contains("exporting")){
-    if(e.key==="Escape"){e.preventDefault();closeExportMode();}
-    return; // 書き出しモード中はタグ打ち等を無効化
-  }
   if(document.querySelector(".modal-bg.show"))return;
   if(e.target.tagName==="INPUT")return;
   const g=curGame();if(!g)return;
