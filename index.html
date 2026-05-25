@@ -85,12 +85,6 @@
   main{grid-area:main;padding:22px;display:flex;flex-direction:column;gap:18px;overflow:hidden;}
   .player-wrap{position:relative;width:100%;background:#000;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);aspect-ratio:16/9;}
   .player-wrap #player{width:100%;height:100%;}
-  /* 連続再生中の全画面化 */
-  .player-wrap.fs{position:fixed;inset:0;z-index:9000;width:100vw;height:100vh;aspect-ratio:auto;border-radius:0;border:none;}
-  /* 全画面解除ボタン（連続再生中・右上） */
-  .fs-exit{position:fixed;top:14px;right:14px;z-index:9100;width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;background:rgba(0,0,0,.55);color:#fff;font-size:18px;font-weight:800;line-height:1;display:none;place-items:center;transition:.12s;}
-  .fs-exit.show{display:grid;}
-  .fs-exit:hover{background:rgba(255,90,60,.85);}
   .player-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--txt-dim);font-size:14px;line-height:1.9;padding:20px;}
   .player-empty b{color:var(--txt);display:block;font-size:16px;margin-bottom:6px;}
   .tagdeck{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:13px;}
@@ -202,7 +196,6 @@
   <main>
     <div class="player-wrap" id="playerWrap">
       <div id="player"></div>
-      <button class="fs-exit" id="fsExitBtn" title="全画面を終了">✕</button>
       <div class="player-empty" id="playerEmpty">
         <div><b>試合を追加して始めましょう</b>
         左上の ＋ から、試合名・日付・YouTube の URL を入力してください。<br>
@@ -529,27 +522,17 @@ function cycleSpeed(){
 /* play-all (consecutive playback of filtered tags) */
 let playAll={on:false,queue:[],idx:0,timer:null,watch:null};
 const CLIP_LEAD=3, CLIP_LEN=8; // 区間なし旧タグ用：3秒前から約8秒
-const FIRST_LEAD=5; // 最初のクリップだけ5秒前から再生
-function enterFullscreen(){
-  document.getElementById("playerWrap").classList.add("fs");
-  document.getElementById("fsExitBtn").classList.add("show");
-}
-function exitFullscreen(){
-  document.getElementById("playerWrap").classList.remove("fs");
-  document.getElementById("fsExitBtn").classList.remove("show");
-}
+const FIRST_LEAD=8; // 最初のクリップだけ8秒前から再生
 function startPlayAll(){
   const g=curGame();if(!g||!playerReady())return;
   const list=g.tags.filter(t=>activeFilter===null||t.typeId===activeFilter).slice().sort((a,b)=>tagStart(a)-tagStart(b));
   if(list.length===0)return;
   playAll.on=true;playAll.queue=list;playAll.idx=0;
-  enterFullscreen(); // 連続再生開始で全画面化
   updatePlayAllBtn();
   playClip(0);
 }
 function stopPlayAll(){
   playAll.on=false;clearTimeout(playAll.timer);clearInterval(playAll.watch);
-  exitFullscreen(); // 全画面を解除
   updatePlayAllBtn();
 }
 function playClip(i){
@@ -559,7 +542,7 @@ function playClip(i){
   clearTimeout(playAll.timer);clearInterval(playAll.watch);
   const t=playAll.queue[i];
   const e=tagEnd(t);
-  const lead=(i===0)?FIRST_LEAD:0; // 最初のクリップだけ5秒前から
+  const lead=(i===0)?FIRST_LEAD:0; // 最初のクリップだけ8秒前から
   document.getElementById("playallInfo").textContent=(i+1)+" / "+playAll.queue.length;
   if(e!==undefined){
     // 区間タグ：開始へ飛んで再生し、終了点に達したら次へ
@@ -587,9 +570,7 @@ document.getElementById("fwd5").onclick=()=>skip(5);
 document.getElementById("playpause").onclick=togglePlay;
 document.getElementById("speedBtn").onclick=cycleSpeed;
 document.getElementById("playAllBtn").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
-document.getElementById("fsExitBtn").onclick=()=>stopPlayAll();
 document.addEventListener("keydown",e=>{
-  if(playAll.on && e.key==="Escape"){e.preventDefault();stopPlayAll();return;}
   if(document.querySelector(".modal-bg.show"))return;
   if(e.target.tagName==="INPUT")return;
   const g=curGame();if(!g)return;
