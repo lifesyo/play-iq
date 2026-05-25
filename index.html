@@ -37,6 +37,11 @@
   /* 試合一覧の折りたたみ */
   .app.games-collapsed{grid-template-columns:0 1fr 380px;}
   .app.games-collapsed .games{transform:translateX(-100%);opacity:0;pointer-events:none;}
+  /* タグ一覧（右）の折りたたみ */
+  .app.side-collapsed{grid-template-columns:240px 1fr 0;}
+  .app.side-collapsed aside{transform:translateX(100%);opacity:0;pointer-events:none;}
+  .app.games-collapsed.side-collapsed{grid-template-columns:0 1fr 0;}
+  aside{transition:transform .25s ease,opacity .2s ease;}
   .games{transition:transform .25s ease,opacity .2s ease;}
   /* 折りたたみ開閉ボタン（ヘッダー左） */
   .games-toggle{background:var(--panel-2);color:var(--txt);border:1px solid var(--line);cursor:pointer;width:32px;height:32px;border-radius:9px;font-size:16px;line-height:1;display:grid;place-items:center;transition:.12s;flex-shrink:0;}
@@ -212,6 +217,7 @@
       <div class="date" id="curDate"></div>
     </div>
     <div class="auth" id="authBox">
+      <button class="games-toggle" id="sideToggle" title="タグ一覧の表示/非表示">▦</button>
       <span class="sync-state" id="syncState"></span>
       <button class="btn ghost" id="loginBtn">Googleでログイン</button>
       <div class="user-chip" id="userChip" style="display:none">
@@ -814,6 +820,7 @@ document.getElementById("playpause").onclick=togglePlay;
 document.getElementById("speedBtn").onclick=cycleSpeed;
 document.getElementById("playAllBtn").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
 document.getElementById("gamesToggle").onclick=()=>{document.querySelector(".app").classList.toggle("games-collapsed");};
+document.getElementById("sideToggle").onclick=()=>{document.querySelector(".app").classList.toggle("side-collapsed");};
 document.addEventListener("keydown",e=>{
   if(document.querySelector(".modal-bg.show"))return;
   if(e.target.tagName==="INPUT")return;
