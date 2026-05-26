@@ -130,6 +130,15 @@
   .now{font-variant-numeric:tabular-nums;font-size:13px;color:var(--txt-dim);font-weight:600;}
   .now b{color:var(--accent);font-size:15px;}
   .tag-buttons{display:flex;flex-wrap:wrap;gap:9px;}
+  /* 自チーム/相手の2列レイアウト */
+  .tag-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .tag-col{display:flex;flex-direction:column;gap:8px;min-width:0;}
+  .tag-col-head{font-size:12px;font-weight:800;letter-spacing:.5px;padding:3px 2px;border-bottom:2px solid var(--line);}
+  .tag-col-head.own{color:var(--accent-2);border-color:var(--accent-2);}
+  .tag-col-head.opp{color:var(--accent);border-color:var(--accent);}
+  .tag-col-body{min-height:46px;align-content:flex-start;}
+  #tagButtonsNone{margin-top:12px;}
+  #tagButtonsNone:empty{margin-top:0;}
   .tag-btn{border:1px solid var(--line);background:var(--panel-2);color:var(--txt);cursor:pointer;padding:11px 16px;border-radius:11px;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;transition:transform .1s,filter .15s;position:relative;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;}
   .tag-btn:hover{filter:brightness(1.15);transform:translateY(-1px);}
   .tag-btn:active{transform:scale(.95);}
@@ -270,7 +279,17 @@
         <button class="tp-btn" id="fwd5">5秒 ⏩</button>
         <button class="tp-btn speed" id="speedBtn">1x</button>
       </div>
-      <div class="tag-buttons" id="tagButtons"></div>
+      <div class="tag-cols" id="tagCols">
+        <div class="tag-col">
+          <div class="tag-col-head own">自チーム</div>
+          <div class="tag-buttons tag-col-body" id="tagButtonsOwn" data-side="own"></div>
+        </div>
+        <div class="tag-col">
+          <div class="tag-col-head opp">相手</div>
+          <div class="tag-buttons tag-col-body" id="tagButtonsOpp" data-side="opp"></div>
+        </div>
+      </div>
+      <div class="tag-buttons tag-col-body" id="tagButtonsNone" data-side="none"></div>
       <div class="hint">タグは<b>2回押し</b>で区間を記録します。プレー開始時に1回押す→終了時にもう一度同じタグを押すと、その区間が記録されます。<kbd>1</kbd>〜<kbd>9</kbd>でタグ打ち、<kbd>,</kbd>／<kbd>.</kbd>で5秒戻る／進む。連続再生はこの区間どおりに再生されます。</div>
     </div>
   </main>
@@ -502,7 +521,10 @@ function typeById(id){const g=curGame();if(!g)return{name:"?",color:"#888"};retu
 function tagStart(t){return t.start!==undefined?t.start:t.time;}
 function tagEnd(t){return t.end!==undefined?t.end:undefined;}
 function renderTagButtons(){
-  const box=document.getElementById("tagButtons");box.innerHTML="";
+  const boxOwn=document.getElementById("tagButtonsOwn");
+  const boxOpp=document.getElementById("tagButtonsOpp");
+  const boxNone=document.getElementById("tagButtonsNone");
+  boxOwn.innerHTML="";boxOpp.innerHTML="";boxNone.innerHTML="";
   const g=curGame();if(!g)return;
   g.tagTypes.forEach((t,i)=>{
     const b=document.createElement("button");
@@ -523,12 +545,17 @@ function renderTagButtons(){
     }
     b.onclick=()=>{ if(b.dataset.dragging==="1")return; addTag(t.id); };
     if(!isPending) attachTypeDrag(b);
-    box.appendChild(b);
+    // 区分で振り分け
+    const side=t.side||"none";
+    if(side==="own")boxOwn.appendChild(b);
+    else if(side==="opp")boxOpp.appendChild(b);
+    else boxNone.appendChild(b);
   });
+  // 計測キャンセル/タグ追加ボタンは「その他」欄の末尾に置く
   if(pending){
-    const cancel=document.createElement("button");cancel.className="cancel-pending";cancel.textContent="✕ 計測キャンセル";cancel.onclick=cancelPending;box.appendChild(cancel);
+    const cancel=document.createElement("button");cancel.className="cancel-pending";cancel.textContent="✕ 計測キャンセル";cancel.onclick=cancelPending;boxNone.appendChild(cancel);
   }else{
-    const add=document.createElement("button");add.className="add-tag";add.textContent="＋ タグを追加";add.onclick=openTagModal;box.appendChild(add);
+    const add=document.createElement("button");add.className="add-tag";add.textContent="＋ タグを追加";add.onclick=openTagModal;boxNone.appendChild(add);
   }
 }
 /* タグ種別ボタンの長押しドラッグ並び替え（横方向） */
@@ -547,7 +574,7 @@ function attachTypeDrag(btn){
   }
   function beginDrag(){
     dragging=true;btn.dataset.dragging="1";
-    box=document.getElementById("tagButtons");
+    box=btn.parentNode; // 自分が属する列（own/opp/none）の中で並べ替え
     if(navigator.vibrate)navigator.vibrate(20);
     placeholder=document.createElement("div");
     placeholder.className="tag-drag-ph";
@@ -601,8 +628,12 @@ function attachTypeDrag(btn){
 }
 function saveTypeOrder(){
   const g=curGame();if(!g)return;
-  const box=document.getElementById("tagButtons");
-  const ids=[...box.querySelectorAll(".tag-btn")].map(el=>el.dataset.typeId).filter(Boolean);
+  // 3列（自/相手/その他）の並びを合算して全体の順序を再構築
+  const ids=[];
+  ["tagButtonsOwn","tagButtonsOpp","tagButtonsNone"].forEach(cid=>{
+    const box=document.getElementById(cid);
+    box.querySelectorAll(".tag-btn").forEach(el=>{ if(el.dataset.typeId)ids.push(el.dataset.typeId); });
+  });
   g.tagTypes.sort((a,b)=>ids.indexOf(a.id)-ids.indexOf(b.id));
   renderFilters();scheduleSave();
 }
