@@ -137,6 +137,9 @@
   .tag-btn .x{margin-left:2px;color:var(--txt-dim);font-size:15px;line-height:1;opacity:0;transition:opacity .12s;padding:0 2px;border-radius:4px;}
   .tag-btn:hover .x{opacity:.7;}
   .tag-btn .x:hover{opacity:1;color:var(--accent);}
+  .tag-btn .edit{margin-left:4px;color:var(--txt-dim);font-size:13px;line-height:1;opacity:0;transition:opacity .12s;padding:0 2px;border-radius:4px;}
+  .tag-btn:hover .edit{opacity:.7;}
+  .tag-btn .edit:hover{opacity:1;color:var(--accent-2);}
   .add-tag{border:1px dashed var(--line);background:transparent;color:var(--txt-dim);cursor:pointer;padding:11px 15px;border-radius:11px;font-weight:700;font-size:14px;transition:border-color .15s,color .15s;}
   .add-tag:hover{border-color:var(--accent-2);color:var(--accent-2);}
   .tag-btn.pending{border-color:var(--accent);background:rgba(255,90,60,.16);animation:pulse 1.1s ease-in-out infinite;}
@@ -190,6 +193,19 @@
   .modal input[type=text]{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--txt);padding:11px 13px;border-radius:10px;font-size:14px;outline:none;margin-bottom:16px;font-family:inherit;}
   .modal input:focus{border-color:var(--accent-2);}
   .swatches{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:22px;}
+  .side-select{display:flex;gap:8px;margin-bottom:16px;}
+  .side-select .side-opt{flex:1;border:1px solid var(--line);background:var(--panel-2);color:var(--txt-dim);cursor:pointer;padding:9px;border-radius:9px;font-size:13px;font-weight:700;transition:.12s;}
+  .side-select .side-opt:hover{filter:brightness(1.15);}
+  .side-select .side-opt.active{color:#fff;}
+  .side-select .side-opt[data-side="own"].active{background:var(--accent-2);border-color:var(--accent-2);}
+  .side-select .side-opt[data-side="opp"].active{background:var(--accent);border-color:var(--accent);}
+  .side-select .side-opt[data-side="none"].active{background:var(--panel);border-color:var(--txt-dim);color:var(--txt);}
+  /* 自チーム/相手の合計比較バッジ */
+  .side-compare{display:flex;align-items:center;gap:10px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px;margin-top:2px;font-size:13px;font-weight:700;}
+  .side-compare .sc-own{color:var(--accent-2);}
+  .side-compare .sc-opp{color:var(--accent);}
+  .side-compare .sc-vs{color:var(--txt-dim);}
+  .side-compare b{font-size:16px;font-variant-numeric:tabular-nums;margin-left:3px;}
   .tpl-list{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px;}
   .tpl-chip{border:1px solid var(--line);background:var(--panel-2);color:var(--txt);cursor:pointer;padding:7px 12px;border-radius:9px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;transition:.12s;position:relative;}
   .tpl-chip:hover{border-color:var(--accent-2);}
@@ -290,13 +306,19 @@
 </div>
 <div class="modal-bg" id="tagModalBg">
   <div class="modal">
-    <h3>新しいタグを作る</h3>
+    <h3 id="tagModalTitle">新しいタグを作る</h3>
     <div id="tplSection" style="display:none">
       <label>定番タグから選ぶ</label>
       <div class="tpl-list" id="tplList"></div>
     </div>
     <label>タグ名</label>
     <input type="text" id="newTagName" placeholder="例：リバウンド、ターンオーバー">
+    <label>区分</label>
+    <div class="side-select" id="sideSelect">
+      <button type="button" class="side-opt" data-side="own">自チーム</button>
+      <button type="button" class="side-opt" data-side="opp">相手</button>
+      <button type="button" class="side-opt active" data-side="none">どちらでもない</button>
+    </div>
     <label>色</label>
     <div class="swatches" id="swatches"></div>
     <label class="tpl-save-row"><input type="checkbox" id="saveTpl"> このタグを定番として登録する</label>
@@ -361,12 +383,14 @@ onAuthStateChanged(auth, async (user)=>{
 <script>
 const PALETTE=["#ff5a3c","#3ca5ff","#36d399","#fbbd23","#a78bfa","#f471b5","#2dd4bf","#fb923c"];
 const DEFAULT_TAGTYPES=()=>[
-  {id:"t1",name:"リバウンド",color:"#3ca5ff"},
-  {id:"t2",name:"ターンオーバー",color:"#ff5a3c"},
-  {id:"t3",name:"シュート",color:"#36d399"},
+  {id:"t1",name:"リバウンド",color:"#3ca5ff",side:"none"},
+  {id:"t2",name:"ターンオーバー",color:"#ff5a3c",side:"none"},
+  {id:"t3",name:"シュート",color:"#36d399",side:"none"},
 ];
 let games=[],currentGameId=null,activeFilter=null,selectedColor=PALETTE[0];
-let tagTemplates=[]; // 定番タグ {name,color}
+let selectedSide="none"; // タグモーダルの区分選択
+let editingTypeId=null;  // 編集中のタグ種別ID（新規作成時はnull）
+let tagTemplates=[]; // 定番タグ {name,color,side}
 function curGame(){return games.find(g=>g.id===currentGameId)||null;}
 let player=null,pollTimer=null;
 function playerReady(){return !!(player&&typeof player.getCurrentTime==="function"&&typeof player.getPlayerState==="function"&&player.getPlayerState()!==-1);}
@@ -492,7 +516,9 @@ function renderTagButtons(){
     }else{
       b.innerHTML='<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
         (i<9?'<span style="color:var(--txt-dim);font-size:11px;margin-left:3px">'+(i+1)+'</span>':"")+
+        '<span class="edit" title="編集">✎</span>'+
         '<span class="x" title="削除">×</span>';
+      b.querySelector(".edit").onclick=(e)=>{e.stopPropagation();openEditTagModal(t.id);};
       b.querySelector(".x").onclick=(e)=>{e.stopPropagation();if(confirm("タグ「"+t.name+"」を削除しますか？")){g.tagTypes=g.tagTypes.filter(x=>x.id!==t.id);if(activeFilter===t.id)activeFilter=null;renderTagButtons();renderFilters();renderTags();scheduleSave();}};
     }
     b.onclick=()=>{ if(b.dataset.dragging==="1")return; addTag(t.id); };
@@ -603,6 +629,20 @@ function renderSummary(){
     chip.innerHTML='<span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+' <b>'+n+'</b>';
     box.appendChild(chip);
   });
+  // 自チーム/相手の合計（区分が設定されているタグのみ集計）
+  let ownTotal=0, oppTotal=0;
+  g.tagTypes.forEach(ty=>{
+    const n=counts[ty.id]||0;
+    if(ty.side==="own")ownTotal+=n;
+    else if(ty.side==="opp")oppTotal+=n;
+  });
+  if(ownTotal>0||oppTotal>0){
+    const cmp=document.createElement("div");cmp.className="side-compare";
+    cmp.innerHTML='<span class="sc-own">自チーム <b>'+ownTotal+'</b></span>'+
+      '<span class="sc-vs">-</span>'+
+      '<span class="sc-opp">相手 <b>'+oppTotal+'</b></span>';
+    box.appendChild(cmp);
+  }
 }
 function renderTags(){
   const list=document.getElementById("tagList");const g=curGame();
@@ -729,7 +769,36 @@ function saveNewOrder(){
 }
 function escapeHtml(s){return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
 function escapeAttr(s){return (s||"").replace(/"/g,"&quot;");}
-function openTagModal(){if(!curGame())return;document.getElementById("newTagName").value="";selectedColor=PALETTE[0];document.getElementById("saveTpl").checked=false;renderSwatches();renderTemplates();document.getElementById("tagModalBg").classList.add("show");document.getElementById("newTagName").focus();}
+function setSideSelect(side){
+  selectedSide=side;
+  document.querySelectorAll("#sideSelect .side-opt").forEach(b=>b.classList.toggle("active",b.dataset.side===side));
+}
+function openTagModal(){
+  if(!curGame())return;
+  editingTypeId=null;
+  document.getElementById("tagModalTitle").textContent="新しいタグを作る";
+  document.getElementById("createTag").textContent="作成";
+  document.getElementById("newTagName").value="";
+  selectedColor=PALETTE[0];setSideSelect("none");
+  document.getElementById("saveTpl").checked=false;
+  document.querySelector(".tpl-save-row").style.display="";
+  renderSwatches();renderTemplates();
+  document.getElementById("tagModalBg").classList.add("show");document.getElementById("newTagName").focus();
+}
+function openEditTagModal(typeId){
+  const g=curGame();if(!g)return;
+  const ty=g.tagTypes.find(t=>t.id===typeId);if(!ty)return;
+  editingTypeId=typeId;
+  document.getElementById("tagModalTitle").textContent="タグを編集";
+  document.getElementById("createTag").textContent="保存";
+  document.getElementById("newTagName").value=ty.name;
+  selectedColor=ty.color;setSideSelect(ty.side||"none");
+  document.getElementById("saveTpl").checked=false;
+  document.querySelector(".tpl-save-row").style.display="none"; // 編集時は定番登録を隠す
+  document.getElementById("tplSection").style.display="none";   // 編集時は定番選択を隠す
+  renderSwatches();
+  document.getElementById("tagModalBg").classList.add("show");document.getElementById("newTagName").focus();
+}
 function closeTagModal(){document.getElementById("tagModalBg").classList.remove("show");}
 function renderSwatches(){const box=document.getElementById("swatches");box.innerHTML="";PALETTE.forEach(c=>{const s=document.createElement("div");s.className="swatch"+(c===selectedColor?" sel":"");s.style.background=c;s.onclick=()=>{selectedColor=c;renderSwatches();};box.appendChild(s);});}
 function renderTemplates(){
@@ -741,9 +810,8 @@ function renderTemplates(){
     chip.innerHTML='<span class="dot" style="background:'+tpl.color+'"></span>'+escapeHtml(tpl.name)+'<span class="tpl-x" title="定番から削除">×</span>';
     chip.onclick=(e)=>{
       if(e.target.classList.contains("tpl-x")){e.stopPropagation();tagTemplates.splice(i,1);renderTemplates();scheduleSave();return;}
-      // 定番を選んだら名前・色を反映
       document.getElementById("newTagName").value=tpl.name;
-      selectedColor=tpl.color;renderSwatches();
+      selectedColor=tpl.color;setSideSelect(tpl.side||"none");renderSwatches();
     };
     box.appendChild(chip);
   });
@@ -752,16 +820,23 @@ function createTagType(){
   const g=curGame();if(!g)return;
   const name=document.getElementById("newTagName").value.trim();
   if(!name){alert("タグ名を入力してください。");return;}
-  g.tagTypes.push({id:"t_"+Date.now(),name,color:selectedColor});
-  // 定番登録チェックがあれば、テンプレートにも追加（同名は更新）
+  if(editingTypeId){
+    // 編集：既存タグ種別を更新
+    const ty=g.tagTypes.find(t=>t.id===editingTypeId);
+    if(ty){ty.name=name;ty.color=selectedColor;ty.side=selectedSide;}
+    closeTagModal();renderTagButtons();renderFilters();renderTags();scheduleSave();
+    return;
+  }
+  g.tagTypes.push({id:"t_"+Date.now(),name,color:selectedColor,side:selectedSide});
   if(document.getElementById("saveTpl").checked){
     const exist=tagTemplates.findIndex(t=>t.name===name);
-    if(exist>=0){tagTemplates[exist].color=selectedColor;}
-    else{tagTemplates.push({name,color:selectedColor});}
+    if(exist>=0){tagTemplates[exist].color=selectedColor;tagTemplates[exist].side=selectedSide;}
+    else{tagTemplates.push({name,color:selectedColor,side:selectedSide});}
   }
   closeTagModal();renderTagButtons();renderFilters();scheduleSave();
 }
 document.getElementById("addGameBtn").onclick=openGameModal;
+document.querySelectorAll("#sideSelect .side-opt").forEach(b=>{ b.onclick=()=>setSideSelect(b.dataset.side); });
 document.getElementById("createGame").onclick=createGame;
 document.getElementById("cancelGame").onclick=closeGameModal;
 document.getElementById("gameModalBg").onclick=(e)=>{if(e.target.id==="gameModalBg")closeGameModal();};
