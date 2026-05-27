@@ -112,6 +112,15 @@
   .game-card .gdel{position:absolute;top:9px;right:9px;color:var(--txt-dim);font-size:14px;opacity:0;transition:.12s;cursor:pointer;}
   .game-card:hover .gdel{opacity:.5;}
   .game-card .gdel:hover{opacity:1;color:var(--accent);}
+  .game-card .gmove{position:absolute;top:9px;right:30px;color:var(--txt-dim);font-size:13px;opacity:0;transition:.12s;cursor:pointer;}
+  .game-card:hover .gmove{opacity:.5;}
+  .game-card .gmove:hover{opacity:1;color:var(--accent-2);}
+  /* 移動先チーム選択のミニメニュー */
+  .move-menu{position:absolute;z-index:80;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:5px;min-width:160px;max-height:240px;overflow-y:auto;}
+  .move-menu .mm-head{font-size:11px;font-weight:700;color:var(--txt-dim);padding:5px 9px 6px;border-bottom:1px solid var(--line);margin-bottom:4px;}
+  .move-menu .mm-item{display:block;width:100%;text-align:left;background:none;border:none;color:var(--txt);cursor:pointer;padding:8px 9px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;transition:.1s;}
+  .move-menu .mm-item:hover{background:var(--panel);color:var(--accent-2);}
+  .move-menu .mm-item:disabled{color:var(--txt-dim);cursor:default;opacity:.5;}
   .games-empty{text-align:center;color:var(--txt-dim);font-size:12.5px;padding:40px 16px;line-height:1.9;}
   /* ===== チーム選択UI ===== */
   .games-head.team-head{gap:8px;}
@@ -645,13 +654,58 @@ function renderGames(){
   list.forEach(g=>{
     const c=document.createElement("div");
     c.className="game-card"+(g.id===currentGameId?" active":"");
+    // チームが2つ以上あるときだけ「移動」アイコンを出す
+    const moveBtn=teams.length>1?'<span class="gmove" title="別のチームへ移動">↪</span>':'';
     c.innerHTML='<div class="gname">'+escapeHtml(g.name)+'</div>'+
       '<div class="gmeta"><span>'+escapeHtml(g.date||"日付なし")+'</span><span>'+g.tags.length+' タグ</span></div>'+
-      '<span class="gdel" title="削除">×</span>';
-    c.onclick=(e)=>{if(e.target.classList.contains("gdel"))return;selectGame(g.id);};
+      moveBtn+'<span class="gdel" title="削除">×</span>';
+    c.onclick=(e)=>{if(e.target.classList.contains("gdel")||e.target.classList.contains("gmove"))return;selectGame(g.id);};
     c.querySelector(".gdel").onclick=(e)=>{e.stopPropagation();delGame(g.id);};
+    const mv=c.querySelector(".gmove");
+    if(mv)mv.onclick=(e)=>{e.stopPropagation();openMoveMenu(g.id,mv);};
     box.appendChild(c);
   });
+}
+/* 試合を別チームへ移動するミニメニュー */
+function closeMoveMenu(){const m=document.getElementById("activeMoveMenu");if(m)m.remove();}
+function openMoveMenu(gameId,anchor){
+  closeMoveMenu();
+  const g=games.find(x=>x.id===gameId);if(!g)return;
+  const menu=document.createElement("div");menu.className="move-menu";menu.id="activeMoveMenu";
+  menu.innerHTML='<div class="mm-head">移動先チーム</div>';
+  teams.forEach(t=>{
+    const b=document.createElement("button");b.className="mm-item";
+    b.textContent=t.name+(t.id===g.teamId?"（現在）":"");
+    b.disabled=(t.id===g.teamId);
+    b.onclick=(e)=>{e.stopPropagation();moveGameToTeam(gameId,t.id);closeMoveMenu();};
+    menu.appendChild(b);
+  });
+  document.body.appendChild(menu);
+  // アンカー位置に配置（画面外にはみ出さないよう調整）
+  const r=anchor.getBoundingClientRect();
+  let left=r.left, top=r.bottom+4;
+  const mw=menu.offsetWidth, mh=menu.offsetHeight;
+  if(left+mw>window.innerWidth-8)left=window.innerWidth-mw-8;
+  if(top+mh>window.innerHeight-8)top=r.top-mh-4;
+  menu.style.left=Math.max(8,left)+"px";menu.style.top=Math.max(8,top)+"px";
+  // 外側クリックで閉じる（次のクリックから有効化）
+  setTimeout(()=>{document.addEventListener("click",closeMoveMenu,{once:true});},0);
+}
+function moveGameToTeam(gameId,teamId){
+  const g=games.find(x=>x.id===gameId);if(!g||g.teamId===teamId)return;
+  g.teamId=teamId;
+  // 移動した試合がいま開かれていたら選択解除（別チーム表示に消えるため）
+  if(currentGameId===gameId && teamId!==currentTeamId){
+    currentGameId=null;
+    const ct=document.getElementById("curTitle");
+    ct.textContent="試合を選択してください";ct.style.color="var(--txt-dim)";ct.style.fontWeight="600";
+    document.getElementById("curDate").textContent="";
+    document.getElementById("tagdeck").classList.add("disabled");
+    document.getElementById("playerEmpty").style.display="grid";
+    if(player&&player.stopVideo)player.stopVideo();
+    renderTagButtons();renderFilters();renderTags();
+  }
+  renderTeams();renderGames();scheduleSave();
 }
 /* ===== チーム CRUD ===== */
 let editingTeamId=null;
