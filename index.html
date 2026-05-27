@@ -153,7 +153,7 @@
   .ov-tag .time{font-variant-numeric:tabular-nums;font-weight:800;font-size:12.5px;color:var(--accent-2);flex-shrink:0;min-width:60px;}
   .ov-tag .label{font-weight:700;font-size:13px;display:flex;align-items:center;gap:7px;flex:1;min-width:0;}
   .ov-tag .label .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
-  .ov-tag .note{font-size:11.5px;color:var(--txt-dim);}
+  .ov-tag .note{font-size:11.5px;color:var(--txt);background:rgba(255,255,255,.06);border-radius:6px;padding:2px 8px;}
   .ov-player{font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;background:rgba(60,165,255,.16);color:var(--accent-2);white-space:nowrap;}
   .ov-playall{background:var(--accent);color:#fff;border:none;cursor:pointer;padding:8px 16px;border-radius:9px;font-weight:700;font-size:13px;transition:.12s;}
   .ov-playall:hover{filter:brightness(1.1);}
@@ -312,6 +312,10 @@
   .filter-chip{border:1px solid var(--line);background:var(--panel);color:var(--txt-dim);cursor:pointer;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;transition:.15s;}
   .filter-chip .dot{width:8px;height:8px;border-radius:50%;}
   .filter-chip.active{color:var(--txt);background:var(--panel-2);border-color:var(--txt-dim);}
+  .filter-chip .chip-go{color:var(--accent);font-size:10px;}
+  /* 横断ビューで選手選択中：種類チップを「プレー集へ飛べる」見た目に */
+  #ovFilters .filter-chip:has(.chip-go){border-color:rgba(255,90,60,.45);background:rgba(255,90,60,.08);color:var(--txt);}
+  #ovFilters .filter-chip:has(.chip-go):hover{background:rgba(255,90,60,.18);border-color:var(--accent);}
   .tag-list{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;}
   .tag-list::-webkit-scrollbar{width:8px;}
   .tag-list::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
@@ -964,12 +968,32 @@ function renderOverview(){
   }
   // フィルタ（種類名）
   const fbox=document.getElementById("ovFilters");fbox.innerHTML="";
-  const all=document.createElement("button");all.className="filter-chip"+(ovFilter===null?" active":"");all.textContent="種類：すべて";
-  all.onclick=()=>{ovFilter=null;renderOverview();};fbox.appendChild(all);
+  const jumpMode=(ovPlayerFilter!==null&&ovPlayerFilter!=="__none__");
+  const all=document.createElement("button");all.className="filter-chip"+(ovFilter===null?" active":"");
+  all.innerHTML="種類：すべて"+(jumpMode?' <span class="chip-go">▶</span>':'');
+  all.onclick=()=>{
+    if(jumpMode){
+      ovFilter=null;
+      const q=buildOvQueue();
+      if(q.length===0){alert("該当するプレーがありません。");renderOverview();return;}
+      openReel(q, reelTitleText());
+    }else{ovFilter=null;renderOverview();}
+  };
+  fbox.appendChild(all);
   agg.forEach(a=>{
     const c=document.createElement("button");c.className="filter-chip"+(ovFilter===a.name?" active":"");
-    c.innerHTML='<span class="dot" style="background:'+a.color+'"></span>'+escapeHtml(a.name);
-    c.onclick=()=>{ovFilter=a.name;renderOverview();};fbox.appendChild(c);
+    c.innerHTML='<span class="dot" style="background:'+a.color+'"></span>'+escapeHtml(a.name)+(jumpMode?' <span class="chip-go">▶</span>':'');
+    c.onclick=()=>{
+      if(jumpMode){
+        ovFilter=a.name;
+        const q=buildOvQueue();
+        if(q.length===0){alert("該当するプレーがありません。");renderOverview();return;}
+        openReel(q, reelTitleText());
+      }else{
+        ovFilter=a.name;renderOverview();
+      }
+    };
+    fbox.appendChild(c);
   });
   // フィルタ（選手）
   const pfbox=document.getElementById("ovPlayerFilters");
