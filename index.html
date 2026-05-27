@@ -149,14 +149,15 @@
   .ov-game-title{font-size:13px;font-weight:800;color:var(--accent-2);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;}
   .ov-game-title .date{color:var(--txt-dim);font-weight:600;font-size:11.5px;}
   .ov-tag{background:var(--panel);border:1px solid var(--line);border-left-width:3px;border-radius:10px;padding:9px 12px;transition:.15s;display:flex;gap:11px;align-items:center;margin-bottom:6px;}
-  .ov-tag .time{font-variant-numeric:tabular-nums;font-weight:800;font-size:12.5px;color:var(--accent-2);flex-shrink:0;min-width:60px;border-radius:7px;padding:3px 7px;margin:-3px 0;transition:.12s;cursor:pointer;}
+  .ov-tag .time{font-variant-numeric:tabular-nums;font-weight:800;font-size:12.5px;color:var(--accent-2);flex-shrink:0;min-width:60px;}
   .ov-tag:hover{background:var(--panel-2);}
   .ov-tag .label{font-weight:700;font-size:13px;display:flex;align-items:center;gap:7px;flex:1;min-width:0;}
   .ov-tag .label .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
   .ov-tag .note{font-size:11.5px;color:var(--txt);background:rgba(255,255,255,.06);border-radius:6px;padding:2px 8px;}
   .ov-player{font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;background:rgba(60,165,255,.16);color:var(--accent-2);white-space:nowrap;}
-  /* 時間部分：タップでプレー集を再生（押せると分かる見た目） */
-  .ov-tag .time:hover{background:rgba(255,90,60,.18);color:var(--accent);box-shadow:0 0 0 1px rgba(255,90,60,.4) inset;}
+  /* 種類＋選手の両方を選択中：行全体がプレー集ジャンプボタンになる */
+  .ov-tag.jumpable{cursor:pointer;border-color:rgba(255,90,60,.4);}
+  .ov-tag.jumpable:hover{background:rgba(255,90,60,.12);border-color:var(--accent);transform:translateX(-2px);}
   .ov-playall{background:var(--accent);color:#fff;border:none;cursor:pointer;padding:8px 16px;border-radius:9px;font-weight:700;font-size:13px;transition:.12s;}
   .ov-playall:hover{filter:brightness(1.1);}
   .ov-empty{text-align:center;color:var(--txt-dim);font-size:13px;padding:60px 20px;line-height:1.9;}
@@ -1026,18 +1027,22 @@ function rebuildOverviewList(){
       const tl=(e!==undefined)?fmt(s)+"→"+fmt(e):fmt(s);
       const pl=playerById(g,tag.playerId);
       const pchip=pl?'<span class="ov-player">👤 '+escapeHtml(playerLabel(pl))+'</span>':'';
-      const row=document.createElement("div");row.className="ov-tag";row.style.borderLeftColor=ty.color;
-      row.innerHTML='<div class="time" title="タップでプレー集を再生">'+tl+'</div>'+
+      // 種類＋選手の両方が選択されているときだけ、行をプレー集ジャンプボタンにする
+      const jumpable=(ovFilter!==null && ovPlayerFilter!==null && ovPlayerFilter!=="__none__");
+      const row=document.createElement("div");
+      row.className="ov-tag"+(jumpable?" jumpable":"");row.style.borderLeftColor=ty.color;
+      row.innerHTML='<div class="time">'+tl+'</div>'+
         '<div class="label"><span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+pchip+
         (tag.note?' <span class="note">'+escapeHtml(tag.note)+'</span>':'')+'</div>';
-      // 時間部分タップ → いまの一覧（フィルタ後）をプレー集として、このクリップから再生
-      row.querySelector(".time").onclick=(ev)=>{
-        ev.stopPropagation();
-        const q=buildOvQueue();
-        const idx=q.findIndex(c=>c.gameId===g.id&&Math.abs(c.start-s)<0.01);
-        openReel(q, reelTitleText(), idx>=0?idx:0);
-      };
-      // 行のその他の部分は再生のトリガーにしない（タップしても何も起きない）
+      if(jumpable){
+        row.title="タップでプレー集を再生";
+        row.onclick=()=>{
+          const q=buildOvQueue();
+          const idx=q.findIndex(c=>c.gameId===g.id&&Math.abs(c.start-s)<0.01);
+          openReel(q, reelTitleText(), idx>=0?idx:0);
+        };
+      }
+      // 絞り込みが不十分なときは行をタップしても何も起きない
       group.appendChild(row);
     });
     list.appendChild(group);
