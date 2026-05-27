@@ -114,7 +114,17 @@
   .game-card .gdel:hover{opacity:1;color:var(--accent);}
   .games-empty{text-align:center;color:var(--txt-dim);font-size:12.5px;padding:40px 16px;line-height:1.9;}
   main{grid-area:main;padding:22px;display:flex;flex-direction:column;gap:18px;overflow:hidden;align-items:center;}
-  .player-wrap{position:relative;width:100%;max-width:min(100%, calc((100vh - 230px) * 16 / 9));background:#000;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);aspect-ratio:16/9;margin:0 auto;}
+  .player-wrap{position:relative;width:var(--pw-w,100%);height:var(--pw-h,auto);max-width:100%;background:#000;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);aspect-ratio:var(--pw-ar,16/9);margin:0 auto;}
+  /* 高さを明示指定したらアスペクト比は解除 */
+  .player-wrap.h-fixed{aspect-ratio:auto;}
+  /* 動画サイズ調節パネル */
+  .size-panel{width:100%;max-width:480px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 18px;display:flex;flex-direction:column;gap:12px;}
+  .size-row{display:flex;align-items:center;gap:12px;}
+  .size-row .size-label{font-size:13px;font-weight:700;color:var(--txt-dim);width:36px;flex-shrink:0;}
+  .size-row input[type=range]{flex:1;accent-color:var(--accent);}
+  .size-row .size-val{font-size:12px;font-weight:700;color:var(--txt);width:46px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums;}
+  .size-reset{align-self:flex-end;background:var(--panel-2);color:var(--txt-dim);border:1px solid var(--line);cursor:pointer;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;transition:.12s;}
+  .size-reset:hover{color:var(--accent);}
   .player-wrap #player{width:100%;height:100%;}
   .player-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--txt-dim);font-size:14px;line-height:1.9;padding:20px;}
   .player-empty b{color:var(--txt);display:block;font-size:16px;margin-bottom:6px;}
@@ -242,6 +252,7 @@
       <div class="date" id="curDate"></div>
     </div>
     <div class="auth" id="authBox">
+      <button class="games-toggle" id="sizeToggle" title="動画サイズ調節">⤢</button>
       <button class="games-toggle" id="sideToggle" title="タグ一覧の表示/非表示">▦</button>
       <span class="sync-state" id="syncState"></span>
       <button class="btn ghost" id="loginBtn">Googleでログイン</button>
@@ -260,6 +271,19 @@
     <div class="games-list" id="gamesList"></div>
   </div>
   <main>
+    <div class="size-panel" id="sizePanel" style="display:none">
+      <div class="size-row">
+        <span class="size-label">横幅</span>
+        <input type="range" id="pwWidth" min="40" max="100" value="100">
+        <span class="size-val" id="pwWidthVal">100%</span>
+      </div>
+      <div class="size-row">
+        <span class="size-label">高さ</span>
+        <input type="range" id="pwHeight" min="30" max="100" value="100">
+        <span class="size-val" id="pwHeightVal">標準</span>
+      </div>
+      <button class="size-reset" id="sizeReset">標準に戻す</button>
+    </div>
     <div class="player-wrap" id="playerWrap">
       <div id="player"></div>
       <div class="player-empty" id="playerEmpty">
@@ -378,7 +402,7 @@ window.PlayIQ = {
   async save(data){
     if(!currentUid) return;
     try{
-      await setDoc(doc(db, "playiq_data", currentUid), {games:data.games, templates:data.templates||[], updatedAt:Date.now()});
+      await setDoc(doc(db, "playiq_data", currentUid), {games:data.games, templates:data.templates||[], playerSize:data.playerSize||null, updatedAt:Date.now()});
       window.onSyncSaved && window.onSyncSaved();
     }catch(e){ console.error("save failed", e); window.onSyncError && window.onSyncError(); }
   }
@@ -391,7 +415,7 @@ onAuthStateChanged(auth, async (user)=>{
     try{
       const snap = await getDoc(doc(db, "playiq_data", currentUid));
       const d = snap.exists() ? snap.data() : {};
-      window.onDataLoaded && window.onDataLoaded({games:d.games||[], templates:d.templates||[]});
+      window.onDataLoaded && window.onDataLoaded({games:d.games||[], templates:d.templates||[], playerSize:d.playerSize||null});
     }catch(e){ console.error("load failed", e); window.onDataLoaded && window.onDataLoaded({games:[],templates:[]}); }
   }else{
     currentUid = null;
@@ -410,6 +434,7 @@ let games=[],currentGameId=null,activeFilter=null,selectedColor=PALETTE[0];
 let selectedSide="none"; // タグモーダルの区分選択
 let editingTypeId=null;  // 編集中のタグ種別ID（新規作成時はnull）
 let tagTemplates=[]; // 定番タグ {name,color,side}
+let playerSize={w:100,h:100}; // 動画サイズ w:横幅%, h:高さ%(画面比)
 function curGame(){return games.find(g=>g.id===currentGameId)||null;}
 let player=null,pollTimer=null;
 function playerReady(){return !!(player&&typeof player.getCurrentTime==="function"&&typeof player.getPlayerState==="function"&&player.getPlayerState()!==-1);}
@@ -942,6 +967,33 @@ document.getElementById("speedBtn").onclick=cycleSpeed;
 document.getElementById("playAllBtn").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
 document.getElementById("gamesToggle").onclick=()=>{document.querySelector(".app").classList.toggle("games-collapsed");};
 document.getElementById("sideToggle").onclick=()=>{document.querySelector(".app").classList.toggle("side-collapsed");};
+// 動画サイズ調節
+function applyPlayerSize(){
+  const wrap=document.getElementById("playerWrap");
+  wrap.style.setProperty("--pw-w", playerSize.w+"%");
+  if(playerSize.h>=100){
+    // 高さ標準：アスペクト比16:9で横幅に追従
+    wrap.classList.remove("h-fixed");
+    wrap.style.removeProperty("--pw-h");
+  }else{
+    // 高さ指定：画面高さに対する割合で固定（比率は崩れる）
+    wrap.classList.add("h-fixed");
+    wrap.style.setProperty("--pw-h", "calc((100vh - 160px) * "+(playerSize.h/100)+")");
+  }
+  document.getElementById("pwWidth").value=playerSize.w;
+  document.getElementById("pwHeight").value=playerSize.h;
+  document.getElementById("pwWidthVal").textContent=playerSize.w+"%";
+  document.getElementById("pwHeightVal").textContent=(playerSize.h>=100?"標準":playerSize.h+"%");
+}
+document.getElementById("sizeToggle").onclick=()=>{
+  const p=document.getElementById("sizePanel");
+  p.style.display=(p.style.display==="none")?"flex":"none";
+};
+document.getElementById("pwWidth").oninput=(e)=>{playerSize.w=+e.target.value;applyPlayerSize();};
+document.getElementById("pwHeight").oninput=(e)=>{playerSize.h=+e.target.value;applyPlayerSize();};
+document.getElementById("pwWidth").onchange=()=>scheduleSave();
+document.getElementById("pwHeight").onchange=()=>scheduleSave();
+document.getElementById("sizeReset").onclick=()=>{playerSize={w:100,h:100};applyPlayerSize();scheduleSave();};
 document.addEventListener("keydown",e=>{
   if(document.querySelector(".modal-bg.show"))return;
   if(e.target.tagName==="INPUT")return;
@@ -958,7 +1010,7 @@ function scheduleSave(){
   if(!signedIn||!window.PlayIQ)return;
   setSyncState("saving");
   clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>{ window.PlayIQ.save({games:games, templates:tagTemplates}); }, 1200);
+  saveTimer=setTimeout(()=>{ window.PlayIQ.save({games:games, templates:tagTemplates, playerSize:playerSize}); }, 1200);
 }
 function setSyncState(s){
   const el=document.getElementById("syncState");
@@ -987,7 +1039,11 @@ window.onDataLoaded=(remote)=>{
   else if(remote&&typeof remote==="object"){
     if(Array.isArray(remote.games)&&remote.games.length>0)games=remote.games;
     if(Array.isArray(remote.templates))tagTemplates=remote.templates;
+    if(remote.playerSize&&typeof remote.playerSize==="object"){
+      playerSize={w:remote.playerSize.w||100, h:remote.playerSize.h||100};
+    }
   }
+  applyPlayerSize();
   currentGameId=null;
   const ct=document.getElementById("curTitle");
   ct.textContent="試合を選択してください";ct.style.color="var(--txt-dim)";ct.style.fontWeight="600";
@@ -1003,6 +1059,7 @@ document.getElementById("loginBtn").onclick=()=>window.PlayIQ&&window.PlayIQ.log
 document.getElementById("logoutBtn").onclick=()=>window.PlayIQ&&window.PlayIQ.logout();
 
 renderGames();renderTagButtons();renderFilters();renderTags();
+applyPlayerSize();
 
 /* PWA: register service worker */
 if("serviceWorker" in navigator){
