@@ -113,23 +113,34 @@
   .game-card:hover .gdel{opacity:.5;}
   .game-card .gdel:hover{opacity:1;color:var(--accent);}
   .games-empty{text-align:center;color:var(--txt-dim);font-size:12.5px;padding:40px 16px;line-height:1.9;}
-  main{grid-area:main;padding:22px;display:flex;flex-direction:column;gap:18px;overflow:hidden;align-items:center;}
-  .player-wrap{position:relative;width:var(--pw-w,100%);height:var(--pw-h,auto);max-width:100%;background:#000;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);aspect-ratio:var(--pw-ar,16/9);margin:0 auto;}
-  /* 高さを明示指定したらアスペクト比は解除 */
-  .player-wrap.h-fixed{aspect-ratio:auto;}
-  /* 動画サイズ調節パネル */
-  .size-panel{width:100%;max-width:480px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 18px;display:flex;flex-direction:column;gap:12px;}
-  .size-row{display:flex;align-items:center;gap:12px;}
-  .size-row .size-label{font-size:13px;font-weight:700;color:var(--txt-dim);width:36px;flex-shrink:0;}
-  .size-row input[type=range]{flex:1;accent-color:var(--accent);}
-  .size-row .size-val{font-size:12px;font-weight:700;color:var(--txt);width:46px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums;}
-  .size-reset{align-self:flex-end;background:var(--panel-2);color:var(--txt-dim);border:1px solid var(--line);cursor:pointer;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;transition:.12s;}
-  .size-reset:hover{color:var(--accent);}
+  /* ===== 左右2カラムレイアウト（動画 | 仕切り | タグデッキ） ===== */
+  main{grid-area:main;padding:18px;display:flex;flex-direction:row;gap:0;overflow:hidden;align-items:stretch;}
+  /* 左：動画カラム。--split-left(%) で幅を可変。最小・最大は clamp で制限 */
+  .video-col{flex:0 0 var(--split-left,70%);min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;overflow:hidden;}
+  /* ドラッグできる仕切り */
+  .splitter{flex:0 0 14px;align-self:stretch;display:flex;align-items:center;justify-content:center;cursor:col-resize;touch-action:none;position:relative;}
+  .splitter::before{content:"";width:4px;height:46px;border-radius:3px;background:var(--line);transition:background .15s,height .15s;}
+  .splitter:hover::before{background:var(--accent-2);height:64px;}
+  .splitter.dragging::before{background:var(--accent-2);height:80px;}
+  /* 右：タグ操作カラム（スクロール可） */
+  .deck-col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;overflow-y:auto;padding-left:4px;}
+  .deck-col::-webkit-scrollbar{width:7px;}
+  .deck-col::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+  /* 動画ラッパ：左カラム幅と利用可能高さの両方に収まる最大サイズで16:9を維持 */
+  .player-wrap{position:relative;width:100%;max-width:min(100%, calc((100vh - 120px) * 16 / 9));aspect-ratio:16/9;background:#000;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);margin:0 auto;}
   .player-wrap #player{width:100%;height:100%;}
   .player-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--txt-dim);font-size:14px;line-height:1.9;padding:20px;}
   .player-empty b{color:var(--txt);display:block;font-size:16px;margin-bottom:6px;}
   .tagdeck{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:13px;}
   .tagdeck.disabled{opacity:.45;pointer-events:none;}
+  /* 狭い画面（縦持ち等）では左右分割をやめて縦積みに戻す */
+  @media (max-width:900px), (orientation:portrait){
+    main{flex-direction:column;overflow-y:auto;align-items:stretch;gap:16px;}
+    .video-col{flex:none;width:100%;}
+    .splitter{display:none;}
+    .deck-col{flex:none;overflow:visible;padding-left:0;}
+    .player-wrap{max-width:100%;}
+  }
   .tagdeck .deck-head{display:flex;align-items:center;justify-content:space-between;}
   .tagdeck .deck-head h2{font-size:13px;font-weight:700;color:var(--txt-dim);letter-spacing:.5px;text-transform:uppercase;}
   .transport{display:flex;gap:9px;}
@@ -252,7 +263,6 @@
       <div class="date" id="curDate"></div>
     </div>
     <div class="auth" id="authBox">
-      <button class="games-toggle" id="sizeToggle" title="動画サイズ調節">⤢</button>
       <button class="games-toggle" id="sideToggle" title="タグ一覧の表示/非表示">▦</button>
       <span class="sync-state" id="syncState"></span>
       <button class="btn ghost" id="loginBtn">Googleでログイン</button>
@@ -271,27 +281,18 @@
     <div class="games-list" id="gamesList"></div>
   </div>
   <main>
-    <div class="size-panel" id="sizePanel" style="display:none">
-      <div class="size-row">
-        <span class="size-label">横幅</span>
-        <input type="range" id="pwWidth" min="40" max="100" value="100">
-        <span class="size-val" id="pwWidthVal">100%</span>
-      </div>
-      <div class="size-row">
-        <span class="size-label">高さ</span>
-        <input type="range" id="pwHeight" min="30" max="100" value="100">
-        <span class="size-val" id="pwHeightVal">標準</span>
-      </div>
-      <button class="size-reset" id="sizeReset">標準に戻す</button>
-    </div>
-    <div class="player-wrap" id="playerWrap">
-      <div id="player"></div>
-      <div class="player-empty" id="playerEmpty">
-        <div><b>試合を追加して始めましょう</b>
-        左上の ＋ から、試合名・日付・YouTube の URL を入力してください。<br>
-        動画は限定公開（Unlisted）でOKです。</div>
+    <div class="video-col" id="videoCol">
+      <div class="player-wrap" id="playerWrap">
+        <div id="player"></div>
+        <div class="player-empty" id="playerEmpty">
+          <div><b>試合を追加して始めましょう</b>
+          左上の ＋ から、試合名・日付・YouTube の URL を入力してください。<br>
+          動画は限定公開（Unlisted）でOKです。</div>
+        </div>
       </div>
     </div>
+    <div class="splitter" id="splitter" title="ドラッグで動画とタグ欄の幅を調節"></div>
+    <div class="deck-col" id="deckCol">
     <div class="tagdeck disabled" id="tagdeck">
       <div class="deck-head">
         <h2>タグを打つ</h2>
@@ -315,6 +316,7 @@
       </div>
       <div class="tag-buttons tag-col-body" id="tagButtonsNone" data-side="none"></div>
       <div class="hint">タグは<b>2回押し</b>で区間を記録します。プレー開始時に1回押す→終了時にもう一度同じタグを押すと、その区間が記録されます。<kbd>1</kbd>〜<kbd>9</kbd>でタグ打ち、<kbd>,</kbd>／<kbd>.</kbd>で5秒戻る／進む。連続再生はこの区間どおりに再生されます。</div>
+    </div>
     </div>
   </main>
   <aside>
@@ -434,7 +436,7 @@ let games=[],currentGameId=null,activeFilter=null,selectedColor=PALETTE[0];
 let selectedSide="none"; // タグモーダルの区分選択
 let editingTypeId=null;  // 編集中のタグ種別ID（新規作成時はnull）
 let tagTemplates=[]; // 定番タグ {name,color,side}
-let playerSize={w:100,h:100}; // 動画サイズ w:横幅%, h:高さ%(画面比)
+let playerSize={split:70}; // 左（動画）カラムの幅%。ドラッグ仕切りで調節
 function curGame(){return games.find(g=>g.id===currentGameId)||null;}
 let player=null,pollTimer=null;
 function playerReady(){return !!(player&&typeof player.getCurrentTime==="function"&&typeof player.getPlayerState==="function"&&player.getPlayerState()!==-1);}
@@ -481,6 +483,8 @@ function selectGame(id){
   ct.textContent=g.name;ct.style.color="var(--txt)";ct.style.fontWeight="800";
   document.getElementById("curDate").textContent=g.date||"";
   document.getElementById("tagdeck").classList.remove("disabled");
+  // 試合を選んだら一覧は用済み → 自動で畳んで動画スペースを最大化（広い画面のみ）
+  if(window.innerWidth>900){ document.querySelector(".app").classList.add("games-collapsed"); }
   mountVideo(g.videoId);
   renderGames();renderTagButtons();renderFilters();renderTags();
 }
@@ -967,33 +971,47 @@ document.getElementById("speedBtn").onclick=cycleSpeed;
 document.getElementById("playAllBtn").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
 document.getElementById("gamesToggle").onclick=()=>{document.querySelector(".app").classList.toggle("games-collapsed");};
 document.getElementById("sideToggle").onclick=()=>{document.querySelector(".app").classList.toggle("side-collapsed");};
-// 動画サイズ調節
+// 動画/タグ欄の左右比率（ドラッグ仕切り）
 function applyPlayerSize(){
-  const wrap=document.getElementById("playerWrap");
-  wrap.style.setProperty("--pw-w", playerSize.w+"%");
-  if(playerSize.h>=100){
-    // 高さ標準：アスペクト比16:9で横幅に追従
-    wrap.classList.remove("h-fixed");
-    wrap.style.removeProperty("--pw-h");
-  }else{
-    // 高さ指定：画面高さに対する割合で固定（比率は崩れる）
-    wrap.classList.add("h-fixed");
-    wrap.style.setProperty("--pw-h", "calc((100vh - 160px) * "+(playerSize.h/100)+")");
-  }
-  document.getElementById("pwWidth").value=playerSize.w;
-  document.getElementById("pwHeight").value=playerSize.h;
-  document.getElementById("pwWidthVal").textContent=playerSize.w+"%";
-  document.getElementById("pwHeightVal").textContent=(playerSize.h>=100?"標準":playerSize.h+"%");
+  // split = 左（動画）カラムの幅%。clampで35〜80%に制限
+  const v=Math.max(35,Math.min(80, playerSize.split||70));
+  document.querySelector("main").style.setProperty("--split-left", v+"%");
 }
-document.getElementById("sizeToggle").onclick=()=>{
-  const p=document.getElementById("sizePanel");
-  p.style.display=(p.style.display==="none")?"flex":"none";
-};
-document.getElementById("pwWidth").oninput=(e)=>{playerSize.w=+e.target.value;applyPlayerSize();};
-document.getElementById("pwHeight").oninput=(e)=>{playerSize.h=+e.target.value;applyPlayerSize();};
-document.getElementById("pwWidth").onchange=()=>scheduleSave();
-document.getElementById("pwHeight").onchange=()=>scheduleSave();
-document.getElementById("sizeReset").onclick=()=>{playerSize={w:100,h:100};applyPlayerSize();scheduleSave();};
+(function initSplitter(){
+  const splitter=document.getElementById("splitter");
+  if(!splitter)return;
+  let dragging=false;
+  function startDrag(e){
+    dragging=true;splitter.classList.add("dragging");
+    document.body.style.cursor="col-resize";
+    e.preventDefault();
+  }
+  function onMove(e){
+    if(!dragging)return;
+    const main=document.querySelector("main");
+    const rect=main.getBoundingClientRect();
+    const clientX=(e.touches&&e.touches[0])?e.touches[0].clientX:e.clientX;
+    let pct=((clientX-rect.left)/rect.width)*100;
+    pct=Math.max(35,Math.min(80,pct));
+    playerSize.split=Math.round(pct);
+    applyPlayerSize();
+    e.preventDefault();
+  }
+  function endDrag(){
+    if(!dragging)return;
+    dragging=false;splitter.classList.remove("dragging");
+    document.body.style.cursor="";
+    scheduleSave();
+  }
+  splitter.addEventListener("mousedown",startDrag);
+  splitter.addEventListener("touchstart",startDrag,{passive:false});
+  window.addEventListener("mousemove",onMove);
+  window.addEventListener("touchmove",onMove,{passive:false});
+  window.addEventListener("mouseup",endDrag);
+  window.addEventListener("touchend",endDrag);
+  // ダブルクリック/ダブルタップで標準（70%）に戻す
+  splitter.addEventListener("dblclick",()=>{playerSize.split=70;applyPlayerSize();scheduleSave();});
+})();
 document.addEventListener("keydown",e=>{
   if(document.querySelector(".modal-bg.show"))return;
   if(e.target.tagName==="INPUT")return;
@@ -1040,7 +1058,8 @@ window.onDataLoaded=(remote)=>{
     if(Array.isArray(remote.games)&&remote.games.length>0)games=remote.games;
     if(Array.isArray(remote.templates))tagTemplates=remote.templates;
     if(remote.playerSize&&typeof remote.playerSize==="object"){
-      playerSize={w:remote.playerSize.w||100, h:remote.playerSize.h||100};
+      // 新形式 {split} / 旧形式 {w,h} 両対応（旧データは標準70%にリセット）
+      playerSize={split: remote.playerSize.split || 70};
     }
   }
   applyPlayerSize();
