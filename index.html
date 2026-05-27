@@ -154,6 +154,7 @@
   .ov-tag .label{font-weight:700;font-size:13px;display:flex;align-items:center;gap:7px;flex:1;min-width:0;}
   .ov-tag .label .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
   .ov-tag .note{font-size:11.5px;color:var(--txt-dim);}
+  .ov-player{font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;background:rgba(60,165,255,.16);color:var(--accent-2);white-space:nowrap;}
   .ov-playall{background:var(--accent);color:#fff;border:none;cursor:pointer;padding:8px 16px;border-radius:9px;font-weight:700;font-size:13px;transition:.12s;}
   .ov-playall:hover{filter:brightness(1.1);}
   .ov-empty{text-align:center;color:var(--txt-dim);font-size:13px;padding:60px 20px;line-height:1.9;}
@@ -213,17 +214,18 @@
   .tag-col-body{min-height:46px;align-content:flex-start;}
   #tagButtonsNone{margin-top:12px;}
   #tagButtonsNone:empty{margin-top:0;}
-  .tag-btn{border:1px solid var(--line);background:var(--panel-2);color:var(--txt);cursor:pointer;padding:11px 16px;border-radius:11px;font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;transition:transform .1s,filter .15s;position:relative;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;}
+  .tag-btn{border:1px solid var(--line);background:var(--panel-2);color:var(--txt);cursor:pointer;padding:8px 12px;border-radius:9px;font-weight:700;font-size:12.5px;display:flex;align-items:center;gap:6px;transition:transform .1s,filter .15s;position:relative;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;}
+  .tag-btn .tb-label{white-space:nowrap;}
   .tag-btn:hover{filter:brightness(1.15);transform:translateY(-1px);}
   .tag-btn:active{transform:scale(.95);}
-  .tag-btn .dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+  .tag-btn .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
   .tag-btn .x{margin-left:2px;color:var(--txt-dim);font-size:15px;line-height:1;opacity:0;transition:opacity .12s;padding:0 2px;border-radius:4px;}
   .tag-btn:hover .x{opacity:.7;}
   .tag-btn .x:hover{opacity:1;color:var(--accent);}
   .tag-btn .edit{margin-left:4px;color:var(--txt-dim);font-size:13px;line-height:1;opacity:0;transition:opacity .12s;padding:0 2px;border-radius:4px;}
   .tag-btn:hover .edit{opacity:.7;}
   .tag-btn .edit:hover{opacity:1;color:var(--accent-2);}
-  .add-tag{border:1px dashed var(--line);background:transparent;color:var(--txt-dim);cursor:pointer;padding:11px 15px;border-radius:11px;font-weight:700;font-size:14px;transition:border-color .15s,color .15s;}
+  .add-tag{border:1px dashed var(--line);background:transparent;color:var(--txt-dim);cursor:pointer;padding:8px 12px;border-radius:9px;font-weight:700;font-size:12.5px;transition:border-color .15s,color .15s;}
   .add-tag:hover{border-color:var(--accent-2);color:var(--accent-2);}
   .tag-btn.pending{border-color:var(--accent);background:rgba(255,90,60,.16);animation:pulse 1.1s ease-in-out infinite;}
   .tag-btn.pending .rec{color:var(--accent);font-size:12px;font-weight:800;}
@@ -243,7 +245,24 @@
   .sum-chip{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:7px;}
   .sum-chip .dot{width:8px;height:8px;border-radius:50%;}
   .sum-chip b{color:var(--txt);font-variant-numeric:tabular-nums;}
-  .playall-bar{display:flex;align-items:center;gap:10px;}
+  .playall-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .playall-btn.assign{background:var(--accent-2);}
+  /* 割り振りモードバー */
+  .assign-bar{display:flex;flex-direction:column;gap:10px;background:var(--panel);border:1px solid var(--accent-2);border-radius:12px;padding:12px;}
+  .assign-row1{display:flex;align-items:center;gap:10px;}
+  .assign-progress{font-size:12px;font-weight:800;color:var(--accent-2);font-variant-numeric:tabular-nums;flex-shrink:0;}
+  .assign-tagname{flex:1;min-width:0;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .assign-exit{background:var(--panel-2);color:var(--txt-dim);border:1px solid var(--line);cursor:pointer;padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;transition:.12s;flex-shrink:0;}
+  .assign-exit:hover{color:var(--accent);}
+  .assign-nav{display:flex;gap:7px;}
+  .assign-nav-btn{flex:1;background:var(--panel-2);color:var(--txt);border:1px solid var(--line);cursor:pointer;padding:8px;border-radius:9px;font-size:12.5px;font-weight:700;transition:.12s;}
+  .assign-nav-btn:hover{filter:brightness(1.2);border-color:var(--accent-2);}
+  .assign-players{display:flex;flex-wrap:wrap;gap:7px;}
+  .assign-player{background:var(--panel-2);color:var(--txt);border:1px solid var(--line);cursor:pointer;padding:9px 13px;border-radius:10px;font-size:13px;font-weight:700;transition:.1s;}
+  .assign-player:hover{filter:brightness(1.2);border-color:var(--accent-2);}
+  .assign-player.current{background:var(--accent-2);color:#fff;border-color:var(--accent-2);}
+  .assign-player.none-opt{border-style:dashed;color:var(--txt-dim);}
+  .assign-empty{font-size:12px;color:var(--txt-dim);line-height:1.7;}
   .playall-btn{background:var(--accent);color:#fff;border:none;cursor:pointer;padding:8px 14px;border-radius:9px;font-weight:700;font-size:13px;transition:.12s;}
   .playall-btn:hover{filter:brightness(1.1);}
   .playall-btn.playing{background:var(--warn);color:#1a1205;}
@@ -261,8 +280,12 @@
   .tag-item:hover{background:var(--panel-2);transform:translateX(-2px);}
   .tag-item .time{font-variant-numeric:tabular-nums;font-weight:800;font-size:13px;color:var(--accent-2);flex-shrink:0;min-width:64px;}
   .tag-item .body{flex:1;min-width:0;}
-  .tag-item .label{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:7px;}
+  .tag-item .label{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
   .tag-item .label .dot{width:9px;height:9px;border-radius:50%;}
+  .player-chip{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px;background:rgba(60,165,255,.16);color:var(--accent-2);border:1px solid transparent;cursor:pointer;transition:.12s;white-space:nowrap;}
+  .player-chip:hover{filter:brightness(1.15);border-color:var(--accent-2);}
+  .player-chip.empty{background:transparent;color:var(--txt-dim);border:1px dashed var(--line);}
+  .player-chip.empty:hover{color:var(--accent-2);border-color:var(--accent-2);}
   .tag-item .note{font-size:12px;color:var(--txt-dim);margin-top:3px;word-break:break-word;}
   .tag-item .note-input{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--txt);border-radius:7px;padding:5px 8px;font-size:12px;margin-top:6px;outline:none;font-family:inherit;}
   .tag-item .del{color:var(--txt-dim);font-size:16px;line-height:1;cursor:pointer;flex-shrink:0;opacity:0;transition:.12s;padding:2px;}
@@ -388,7 +411,21 @@
       <div class="filters" id="filters"></div>
       <div class="playall-bar" id="playallBar" style="display:none">
         <button class="playall-btn" id="playAllBtn">▶ 連続再生</button>
+        <button class="playall-btn assign" id="assignModeBtn">👤 選手割り振り</button>
         <span class="playall-info" id="playallInfo"></span>
+      </div>
+      <div class="assign-bar" id="assignBar" style="display:none">
+        <div class="assign-row1">
+          <span class="assign-progress" id="assignProgress">1 / 1</span>
+          <span class="assign-tagname" id="assignTagName"></span>
+          <button class="assign-exit" id="assignExit">✕ 終了</button>
+        </div>
+        <div class="assign-nav">
+          <button class="assign-nav-btn" id="assignPrev">◀ 前</button>
+          <button class="assign-nav-btn" id="assignReplay">↻ 再生</button>
+          <button class="assign-nav-btn" id="assignNext">次 ▶</button>
+        </div>
+        <div class="assign-players" id="assignPlayers"></div>
       </div>
     </div>
     <div class="tag-list" id="tagList">
@@ -471,9 +508,12 @@
     <div class="ov-side">
       <h3>集計（プレー種類別）</h3>
       <div class="ov-stat" id="ovStat"></div>
+      <h3>集計（選手別）</h3>
+      <div class="ov-stat" id="ovPlayerStat"></div>
     </div>
     <div class="ov-main">
       <div class="ov-filters" id="ovFilters"></div>
+      <div class="ov-filters" id="ovPlayerFilters"></div>
       <div id="ovList"></div>
     </div>
   </div>
@@ -787,11 +827,12 @@ function saveRoster(){
   closeRosterModal();scheduleSave();renderTeams();
 }
 /* ===== 横断ビュー ===== */
-let ovFilter=null; // 種類ID絞り込み
+let ovFilter=null; // 種類名で絞り込み
+let ovPlayerFilter=null; // 選手IDで絞り込み（null=すべて）
 let ovPlay={on:false,queue:[],i:0,watch:null,timer:null};
 function openOverview(){
   const t=curTeam();if(!t){alert("先にチームを選択してください。");return;}
-  ovFilter=null;
+  ovFilter=null;ovPlayerFilter=null;
   document.getElementById("ovTitle").textContent=t.name+" — 横断ビュー";
   renderOverview();
   document.getElementById("overviewBg").classList.add("show");
@@ -814,10 +855,23 @@ function teamTagTypeAggregate(t){
   });
   return [...map.values()].sort((a,b)=>b.count-a.count);
 }
+// 選手別の集計（名簿の選手ごとに、割り当てられたタグ数。未割り当ても集計）
+function teamPlayerAggregate(t){
+  const counts={}; let unassigned=0;
+  teamGames(t.id).forEach(g=>{
+    g.tags.forEach(tag=>{
+      if(tag.playerId)counts[tag.playerId]=(counts[tag.playerId]||0)+1;
+      else unassigned++;
+    });
+  });
+  const rows=t.roster.map(p=>({id:p.id,label:playerLabel(p),count:counts[p.id]||0}))
+    .sort((a,b)=>b.count-a.count);
+  return {rows,unassigned};
+}
 function renderOverview(){
   const t=curTeam();if(!t)return;
   const agg=teamTagTypeAggregate(t);
-  // 集計サイド
+  // 集計サイド（種類別）
   const stat=document.getElementById("ovStat");stat.innerHTML="";
   if(agg.length===0){stat.innerHTML='<div style="color:var(--txt-dim);font-size:12.5px">タグがありません</div>';}
   agg.forEach(a=>{
@@ -825,20 +879,63 @@ function renderOverview(){
     chip.innerHTML='<span class="dot" style="background:'+a.color+'"></span>'+escapeHtml(a.name)+' <b>'+a.count+'</b>';
     stat.appendChild(chip);
   });
-  // フィルタ（種類名で絞り込み）
+  // 集計サイド（選手別）
+  const pstat=document.getElementById("ovPlayerStat");
+  if(pstat){
+    pstat.innerHTML="";
+    const pa=teamPlayerAggregate(t);
+    if(pa.rows.length===0){
+      pstat.innerHTML='<div style="color:var(--txt-dim);font-size:12.5px">名簿が空です。「👥 名簿」から選手を登録してください。</div>';
+    }else{
+      pa.rows.forEach(r=>{
+        const chip=document.createElement("div");chip.className="sum-chip";
+        chip.innerHTML='👤 '+escapeHtml(r.label)+' <b>'+r.count+'</b>';
+        pstat.appendChild(chip);
+      });
+      if(pa.unassigned>0){
+        const chip=document.createElement("div");chip.className="sum-chip";chip.style.opacity=".6";
+        chip.innerHTML='未割り当て <b>'+pa.unassigned+'</b>';
+        pstat.appendChild(chip);
+      }
+    }
+  }
+  // フィルタ（種類名）
   const fbox=document.getElementById("ovFilters");fbox.innerHTML="";
-  const all=document.createElement("button");all.className="filter-chip"+(ovFilter===null?" active":"");all.textContent="すべて";
+  const all=document.createElement("button");all.className="filter-chip"+(ovFilter===null?" active":"");all.textContent="種類：すべて";
   all.onclick=()=>{ovFilter=null;renderOverview();};fbox.appendChild(all);
   agg.forEach(a=>{
     const c=document.createElement("button");c.className="filter-chip"+(ovFilter===a.name?" active":"");
     c.innerHTML='<span class="dot" style="background:'+a.color+'"></span>'+escapeHtml(a.name);
     c.onclick=()=>{ovFilter=a.name;renderOverview();};fbox.appendChild(c);
   });
+  // フィルタ（選手）
+  const pfbox=document.getElementById("ovPlayerFilters");
+  if(pfbox){
+    pfbox.innerHTML="";
+    const roster=t.roster||[];
+    if(roster.length>0){
+      const pall=document.createElement("button");pall.className="filter-chip"+(ovPlayerFilter===null?" active":"");pall.textContent="選手：すべて";
+      pall.onclick=()=>{ovPlayerFilter=null;renderOverview();};pfbox.appendChild(pall);
+      roster.forEach(p=>{
+        const c=document.createElement("button");c.className="filter-chip"+(ovPlayerFilter===p.id?" active":"");
+        c.textContent="👤 "+playerLabel(p);
+        c.onclick=()=>{ovPlayerFilter=p.id;renderOverview();};pfbox.appendChild(c);
+      });
+      const un=document.createElement("button");un.className="filter-chip"+(ovPlayerFilter==="__none__"?" active":"");un.textContent="未割り当て";
+      un.onclick=()=>{ovPlayerFilter="__none__";renderOverview();};pfbox.appendChild(un);
+    }
+  }
   // 本体：試合ごとにグループ化して時系列表示
   rebuildOverviewList();
-  // 表示件数チェック
   const list=document.getElementById("ovList");
   if(!list.children.length){list.innerHTML='<div class="ov-empty">該当するタグがありません。</div>';}
+}
+// タグがいまのフィルタ（種類＋選手）に一致するか
+function ovTagMatches(g,tag,byId){
+  if(ovFilter!==null){const ty=byId[tag.typeId];if(!ty||ty.name!==ovFilter)return false;}
+  if(ovPlayerFilter==="__none__"){ if(tag.playerId)return false; }
+  else if(ovPlayerFilter!==null){ if(tag.playerId!==ovPlayerFilter)return false; }
+  return true;
 }
 // 見出し＋その試合のタグ行を正しい入れ子で組み直す
 function rebuildOverviewList(){
@@ -848,7 +945,7 @@ function rebuildOverviewList(){
   gs.forEach(g=>{
     const byId={};g.tagTypes.forEach(ty=>byId[ty.id]=ty);
     let tags=g.tags.slice().sort((a,b)=>tagStart(a)-tagStart(b));
-    if(ovFilter!==null)tags=tags.filter(tag=>{const ty=byId[tag.typeId];return ty&&ty.name===ovFilter;});
+    tags=tags.filter(tag=>ovTagMatches(g,tag,byId));
     if(tags.length===0)return;
     const group=document.createElement("div");group.className="ov-game-group";
     const title=document.createElement("div");title.className="ov-game-title";
@@ -858,9 +955,11 @@ function rebuildOverviewList(){
       const ty=byId[tag.typeId]||{name:"?",color:"#888"};
       const s=tagStart(tag),e=tagEnd(tag);
       const tl=(e!==undefined)?fmt(s)+"→"+fmt(e):fmt(s);
+      const pl=playerById(g,tag.playerId);
+      const pchip=pl?'<span class="ov-player">👤 '+escapeHtml(playerLabel(pl))+'</span>':'';
       const row=document.createElement("div");row.className="ov-tag";row.style.borderLeftColor=ty.color;
       row.innerHTML='<div class="time">'+tl+'</div>'+
-        '<div class="label"><span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+
+        '<div class="label"><span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+pchip+
         (tag.note?' <span class="note">'+escapeHtml(tag.note)+'</span>':'')+'</div>';
       row.onclick=()=>jumpToTag(g.id,s);
       group.appendChild(row);
@@ -886,7 +985,7 @@ function buildOvQueue(){
   teamGames(t.id).forEach(g=>{
     const byId={};g.tagTypes.forEach(ty=>byId[ty.id]=ty);
     let tags=g.tags.slice().sort((a,b)=>tagStart(a)-tagStart(b));
-    if(ovFilter!==null)tags=tags.filter(tag=>{const ty=byId[tag.typeId];return ty&&ty.name===ovFilter;});
+    tags=tags.filter(tag=>ovTagMatches(g,tag,byId));
     tags.forEach(tag=>q.push({gameId:g.id,start:tagStart(tag),end:tagEnd(tag)}));
   });
   return q;
@@ -929,6 +1028,111 @@ function updateOvPlayBtn(){
   const btn=document.getElementById("ovPlayAll");if(!btn)return;
   if(ovPlay.on){btn.textContent="■ 停止";}else{btn.textContent="▶ 連続再生";}
 }
+/* ===== 選手割り振りモード（連続再生しながら一括割り当て） ===== */
+let assign={on:false,queue:[],i:0,watch:null};
+function currentShownTags(){
+  // いまタグ一覧に表示されている順序（フィルタ・手動順を反映）でタグ配列を返す
+  const g=curGame();if(!g)return [];
+  const list=document.getElementById("tagList");
+  const ids=[...list.querySelectorAll(".tag-item")].map(el=>el.dataset.tagId).filter(Boolean);
+  if(ids.length===0){
+    // フォールバック：時間順
+    return g.tags.slice().sort((a,b)=>tagStart(a)-tagStart(b));
+  }
+  return ids.map(id=>g.tags.find(t=>t.id===id)).filter(Boolean);
+}
+function startAssignMode(){
+  const g=curGame();if(!g)return;
+  if(!playerReady()){alert("動画の読み込みを待ってください。");return;}
+  if(gameRoster(g).length===0){
+    if(confirm("この試合のチームに選手名簿がありません。\n先に名簿を登録しますか？")){openRosterModal();}
+    return;
+  }
+  const q=currentShownTags();
+  if(q.length===0){alert("割り振るタグがありません。");return;}
+  // 連続再生が動いていたら止める
+  if(playAll.on)stopPlayAll();
+  assign={on:true,queue:q,i:0,watch:null};
+  document.getElementById("assignBar").style.display="flex";
+  document.getElementById("assignModeBtn").textContent="👤 割り振り中…";
+  assignGoto(0);
+}
+function exitAssignMode(){
+  assign.on=false;
+  if(assign.watch){clearInterval(assign.watch);assign.watch=null;}
+  document.getElementById("assignBar").style.display="none";
+  document.getElementById("assignModeBtn").textContent="👤 選手割り振り";
+  renderTags();
+}
+function assignGoto(i){
+  if(!assign.on)return;
+  if(i<0)i=0;
+  if(i>=assign.queue.length){ // 最後まで来たら終了確認
+    exitAssignMode();
+    alert("すべてのタグを確認しました。");
+    return;
+  }
+  assign.i=i;
+  const t=assign.queue[i];
+  renderAssignBar();
+  // タグ区間を再生
+  if(assign.watch){clearInterval(assign.watch);assign.watch=null;}
+  const s=tagStart(t), e=tagEnd(t), lead=2;
+  if(playerReady()){
+    player.seekTo(Math.max(0,s-lead),true);player.playVideo();
+    const endAt=(e!==undefined)?e:(s+5);
+    assign.watch=setInterval(()=>{
+      if(!assign.on){clearInterval(assign.watch);return;}
+      if(playerReady()&&player.getCurrentTime()>=endAt){
+        // 区間終わりで一時停止（割り当てを待つ）
+        clearInterval(assign.watch);assign.watch=null;
+        if(player.pauseVideo)player.pauseVideo();
+      }
+    },200);
+  }
+}
+function assignReplay(){
+  if(!assign.on)return;
+  const t=assign.queue[assign.i];const s=tagStart(t),lead=2;
+  if(playerReady()){player.seekTo(Math.max(0,s-lead),true);player.playVideo();
+    if(assign.watch){clearInterval(assign.watch);}
+    const e=tagEnd(t),endAt=(e!==undefined)?e:(s+5);
+    assign.watch=setInterval(()=>{
+      if(!assign.on){clearInterval(assign.watch);return;}
+      if(playerReady()&&player.getCurrentTime()>=endAt){clearInterval(assign.watch);assign.watch=null;if(player.pauseVideo)player.pauseVideo();}
+    },200);
+  }
+}
+function assignPick(pid){
+  if(!assign.on)return;
+  const t=assign.queue[assign.i];if(!t)return;
+  setTagPlayer(t.id,pid);
+  renderAssignBar(); // 選択状態を反映
+  // 割り当てたら自動で次へ（少し間を置く）
+  setTimeout(()=>{ if(assign.on)assignGoto(assign.i+1); },300);
+}
+function renderAssignBar(){
+  if(!assign.on)return;
+  const g=curGame();if(!g)return;
+  const t=assign.queue[assign.i];
+  const ty=typeById(t.typeId);
+  document.getElementById("assignProgress").textContent=(assign.i+1)+" / "+assign.queue.length;
+  const s=tagStart(t),e=tagEnd(t);
+  const tl=(e!==undefined)?fmt(s)+"→"+fmt(e):fmt(s);
+  document.getElementById("assignTagName").innerHTML='<span style="color:'+ty.color+'">●</span> '+escapeHtml(ty.name)+' <span style="color:var(--txt-dim);font-weight:600">'+tl+'</span>';
+  // 選手ボタン
+  const box=document.getElementById("assignPlayers");box.innerHTML="";
+  const roster=gameRoster(g);
+  roster.forEach(p=>{
+    const b=document.createElement("button");b.className="assign-player"+(t.playerId===p.id?" current":"");
+    b.textContent=playerLabel(p);
+    b.onclick=()=>assignPick(p.id);
+    box.appendChild(b);
+  });
+  const none=document.createElement("button");none.className="assign-player none-opt"+(!t.playerId?" current":"");
+  none.textContent="割当なし";none.onclick=()=>assignPick(null);
+  box.appendChild(none);
+}
 let pending=null; // {typeId, start} 計測中のタグ
 function addTag(typeId){
   const g=curGame();if(!g)return;
@@ -957,6 +1161,71 @@ function seekTo(time){if(playAll.on)stopPlayAll();if(player&&player.seekTo){play
 function delTag(id){const g=curGame();if(!g)return;g.tags=g.tags.filter(t=>t.id!==id);renderTags();renderGames();scheduleSave();}
 function setNote(id,val){const g=curGame();if(!g)return;const t=g.tags.find(x=>x.id===id);if(t)t.note=val;scheduleSave();}
 function typeById(id){const g=curGame();if(!g)return{name:"?",color:"#888"};return g.tagTypes.find(t=>t.id===id)||{name:"?",color:"#888"};}
+/* ===== 選手割り当て ===== */
+// 現在の試合が属するチームの名簿
+function gameRoster(g){
+  if(!g)return [];
+  const t=teams.find(x=>x.id===g.teamId);
+  return t&&Array.isArray(t.roster)?t.roster:[];
+}
+function playerById(g,pid){
+  if(!pid)return null;
+  return gameRoster(g).find(p=>p.id===pid)||null;
+}
+// 選手の短い表示ラベル（#7 ミキ / #7 / ミキ）
+function playerLabel(p){
+  if(!p)return "";
+  const no=(p.no||"").trim(), nm=(p.name||"").trim();
+  if(no&&nm)return "#"+no+" "+nm;
+  if(no)return "#"+no;
+  return nm;
+}
+function setTagPlayer(tagId,pid){
+  const g=curGame();if(!g)return;
+  const t=g.tags.find(x=>x.id===tagId);if(!t)return;
+  t.playerId=pid||null;
+  scheduleSave();
+}
+// 選手選択ミニメニュー（タグ一覧の選手チップから／割り振りモードからも流用可）
+function closePlayerMenu(){const m=document.getElementById("activePlayerMenu");if(m)m.remove();}
+function openPlayerMenu(anchor,currentPid,onPick){
+  closePlayerMenu();
+  const g=curGame();if(!g)return;
+  const roster=gameRoster(g);
+  const menu=document.createElement("div");menu.className="move-menu";menu.id="activePlayerMenu";
+  if(roster.length===0){
+    menu.innerHTML='<div class="mm-head">名簿が空です</div>'+
+      '<button class="mm-item" id="pmToRoster">👥 名簿を編集する</button>';
+    document.body.appendChild(menu);
+    placeMenu(menu,anchor);
+    menu.querySelector("#pmToRoster").onclick=(e)=>{e.stopPropagation();closePlayerMenu();openRosterModal();};
+    setTimeout(()=>document.addEventListener("click",closePlayerMenu,{once:true}),0);
+    return;
+  }
+  menu.innerHTML='<div class="mm-head">選手を割り当て</div>';
+  // 「未割り当て」に戻す選択肢
+  const none=document.createElement("button");none.className="mm-item";none.textContent="（割り当てなし）";
+  none.disabled=!currentPid;
+  none.onclick=(e)=>{e.stopPropagation();onPick(null);closePlayerMenu();};
+  menu.appendChild(none);
+  roster.forEach(p=>{
+    const b=document.createElement("button");b.className="mm-item";
+    b.textContent=playerLabel(p)+(p.id===currentPid?" ✓":"");
+    b.onclick=(e)=>{e.stopPropagation();onPick(p.id);closePlayerMenu();};
+    menu.appendChild(b);
+  });
+  document.body.appendChild(menu);
+  placeMenu(menu,anchor);
+  setTimeout(()=>document.addEventListener("click",closePlayerMenu,{once:true}),0);
+}
+function placeMenu(menu,anchor){
+  const r=anchor.getBoundingClientRect();
+  let left=r.left, top=r.bottom+4;
+  const mw=menu.offsetWidth, mh=menu.offsetHeight;
+  if(left+mw>window.innerWidth-8)left=window.innerWidth-mw-8;
+  if(top+mh>window.innerHeight-8)top=r.top-mh-4;
+  menu.style.left=Math.max(8,left)+"px";menu.style.top=Math.max(8,top)+"px";
+}
 // 旧タグ(time)と新タグ(start/end)の両方から開始・終了を取り出す
 function tagStart(t){return t.start!==undefined?t.start:t.time;}
 function tagEnd(t){return t.end!==undefined?t.end:undefined;}
@@ -973,10 +1242,10 @@ function renderTagButtons(){
     b.className="tag-btn"+(isPending?" pending":"")+(isBlocked?" blocked":"");
     b.dataset.typeId=t.id;
     if(isPending){
-      b.innerHTML='<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
+      b.innerHTML='<span class="dot" style="background:'+t.color+'"></span><span class="tb-label">'+escapeHtml(t.name)+'</span>'+
         ' <span class="rec">● 終了を押す</span>';
     }else{
-      b.innerHTML='<span class="dot" style="background:'+t.color+'"></span>'+escapeHtml(t.name)+
+      b.innerHTML='<span class="dot" style="background:'+t.color+'"></span><span class="tb-label">'+escapeHtml(t.name)+'</span>'+
         (i<9?'<span style="color:var(--txt-dim);font-size:11px;margin-left:3px">'+(i+1)+'</span>':"")+
         '<span class="edit" title="編集">✎</span>'+
         '<span class="x" title="削除">×</span>';
@@ -1143,14 +1412,18 @@ function renderTags(){
     const dur=(e!==undefined)?'<span class="dur">'+Math.round(e-s)+'秒</span>':'';
     const item=document.createElement("div");item.className="tag-item";item.style.borderLeftColor=ty.color;
     item.dataset.tagId=t.id;
+    const pl=playerById(g,t.playerId);
+    const playerChip='<span class="player-chip'+(pl?'':' empty')+'" title="選手を割り当て">'+(pl?'👤 '+escapeHtml(playerLabel(pl)):'＋ 選手')+'</span>';
     item.innerHTML='<div class="time">'+timeLabel+dur+'</div><div class="body">'+
-      '<div class="label"><span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+'</div>'+
+      '<div class="label"><span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+playerChip+'</div>'+
       (t.note?'<div class="note">'+escapeHtml(t.note)+'</div>':"")+
       '<input class="note-input" placeholder="メモを追加…" value="'+escapeAttr(t.note)+'"></div>'+
       '<div class="del" title="削除">🗑</div>';
-    item.onclick=(ev)=>{if(ev.target.classList.contains("note-input")||ev.target.classList.contains("del"))return;if(item.dataset.dragging==="1")return;seekTo(s);};
+    item.onclick=(ev)=>{if(ev.target.classList.contains("note-input")||ev.target.classList.contains("del")||ev.target.classList.contains("player-chip"))return;if(item.dataset.dragging==="1")return;seekTo(s);};
     const ni=item.querySelector(".note-input");ni.onclick=(ev)=>ev.stopPropagation();ni.oninput=(ev)=>setNote(t.id,ev.target.value);
     item.querySelector(".del").onclick=(ev)=>{ev.stopPropagation();delTag(t.id);};
+    const chip=item.querySelector(".player-chip");
+    chip.onclick=(ev)=>{ev.stopPropagation();openPlayerMenu(chip,t.playerId,(pid)=>{setTagPlayer(t.id,pid);renderTags();});};
     attachDragSort(item);
     list.appendChild(item);
   });
@@ -1399,6 +1672,11 @@ document.getElementById("fwd5").onclick=()=>skip(5);
 document.getElementById("playpause").onclick=togglePlay;
 document.getElementById("speedBtn").onclick=cycleSpeed;
 document.getElementById("playAllBtn").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
+document.getElementById("assignModeBtn").onclick=()=>{assign.on?exitAssignMode():startAssignMode();};
+document.getElementById("assignExit").onclick=exitAssignMode;
+document.getElementById("assignPrev").onclick=()=>{if(assign.on)assignGoto(assign.i-1);};
+document.getElementById("assignNext").onclick=()=>{if(assign.on)assignGoto(assign.i+1);};
+document.getElementById("assignReplay").onclick=assignReplay;
 document.getElementById("gamesToggle").onclick=()=>{document.querySelector(".app").classList.toggle("games-collapsed");};
 document.getElementById("sideToggle").onclick=()=>{document.querySelector(".app").classList.toggle("side-collapsed");};
 // 動画/タグ欄の左右比率（ドラッグ仕切り）
