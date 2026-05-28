@@ -146,6 +146,9 @@
   .ov-stat{display:flex;flex-wrap:wrap;gap:6px;}
   .ov-main{flex:1;overflow-y:auto;padding:16px 20px;}
   .ov-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+  #ovGameFilters{padding-bottom:14px;border-bottom:1px solid var(--line);}
+  #ovGameFilters .filter-chip{font-size:12.5px;font-weight:800;}
+  #ovGameFilters .filter-chip.active{background:var(--accent-2);color:#fff;border-color:var(--accent-2);}
   .ov-game-group{margin-bottom:20px;}
   .ov-game-title{font-size:13px;font-weight:800;color:var(--accent-2);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;}
   .ov-game-title .date{color:var(--txt-dim);font-weight:600;font-size:11.5px;}
@@ -287,7 +290,9 @@
   .hint{font-size:11.5px;color:var(--txt-dim);line-height:1.6;}
   .hint kbd{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11px;font-family:inherit;color:var(--txt);}
   aside{grid-area:side;border-left:1px solid var(--line);background:rgba(20,25,35,.5);display:flex;flex-direction:column;overflow:hidden;}
-  .side-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:12px;}
+  .side-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:12px;flex-shrink:0;max-height:calc(100vh - 200px);overflow-y:auto;}
+  .side-head::-webkit-scrollbar{width:7px;}
+  .side-head::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
   .side-head .row{display:flex;align-items:center;justify-content:space-between;}
   .side-head h2{font-size:15px;font-weight:800;}
   .summary{display:flex;flex-wrap:wrap;gap:6px;}
@@ -306,7 +311,9 @@
   .assign-nav{display:flex;gap:7px;}
   .assign-nav-btn{flex:1;background:var(--panel-2);color:var(--txt);border:1px solid var(--line);cursor:pointer;padding:8px;border-radius:9px;font-size:12.5px;font-weight:700;transition:.12s;}
   .assign-nav-btn:hover{filter:brightness(1.2);border-color:var(--accent-2);}
-  .assign-players{display:flex;flex-wrap:wrap;gap:7px;}
+  .assign-players{display:flex;flex-wrap:wrap;gap:7px;max-height:36vh;overflow-y:auto;padding-right:4px;}
+  .assign-players::-webkit-scrollbar{width:7px;}
+  .assign-players::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
   .assign-player{background:var(--panel-2);color:var(--txt);border:1px solid var(--line);cursor:pointer;padding:9px 13px;border-radius:10px;font-size:13px;font-weight:700;transition:.1s;}
   .assign-player:hover{filter:brightness(1.2);border-color:var(--accent-2);}
   .assign-player.current{background:var(--accent-2);color:#fff;border-color:var(--accent-2);}
@@ -562,6 +569,7 @@
       <div class="ov-stat" id="ovPlayerStat"></div>
     </div>
     <div class="ov-main">
+      <div class="ov-filters" id="ovGameFilters"></div>
       <div class="ov-filters" id="ovFilters"></div>
       <div class="ov-filters" id="ovPlayerFilters"></div>
       <div id="ovList"></div>
@@ -902,10 +910,11 @@ function saveRoster(){
 /* ===== 横断ビュー ===== */
 let ovFilter=null; // 種類名で絞り込み
 let ovPlayerFilter=null; // 選手IDで絞り込み（null=すべて）
+let ovGameFilter=null; // 試合IDで絞り込み（null=すべての試合）
 let ovPlay={on:false,queue:[],i:0,watch:null,timer:null};
 function openOverview(){
   const t=curTeam();if(!t){alert("先にチームを選択してください。");return;}
-  ovFilter=null;ovPlayerFilter=null;
+  ovFilter=null;ovPlayerFilter=null;ovGameFilter=null;
   document.getElementById("ovTitle").textContent=t.name+" — 横断ビュー";
   renderOverview();
   document.getElementById("overviewBg").classList.add("show");
@@ -972,6 +981,25 @@ function renderOverview(){
       }
     }
   }
+  // フィルタ（試合タブ）
+  const gfbox=document.getElementById("ovGameFilters");gfbox.innerHTML="";
+  const gs=teamGames(t.id);
+  if(gs.length>0){
+    const lbl=document.createElement("span");lbl.style.cssText="font-size:11px;font-weight:800;color:var(--txt-dim);align-self:center;margin-right:2px;letter-spacing:.5px;";
+    lbl.textContent="試合";
+    gfbox.appendChild(lbl);
+    const ball=document.createElement("button");ball.className="filter-chip"+(ovGameFilter===null?" active":"");
+    ball.textContent="すべて（"+gs.length+"）";
+    ball.onclick=()=>{ovGameFilter=null;renderOverview();};
+    gfbox.appendChild(ball);
+    gs.forEach(g=>{
+      const c=document.createElement("button");c.className="filter-chip"+(ovGameFilter===g.id?" active":"");
+      c.innerHTML=escapeHtml(g.name)+' <span style="color:var(--txt-dim);font-weight:600;font-size:10.5px;margin-left:3px">'+g.tags.length+'</span>';
+      c.title=g.date||"";
+      c.onclick=()=>{ovGameFilter=g.id;renderOverview();};
+      gfbox.appendChild(c);
+    });
+  }
   // フィルタ（種類名）絞り込み専用
   const fbox=document.getElementById("ovFilters");fbox.innerHTML="";
   const all=document.createElement("button");all.className="filter-chip"+(ovFilter===null?" active":"");
@@ -1007,8 +1035,9 @@ function renderOverview(){
   if(!list.children.length){list.innerHTML='<div class="ov-empty">該当するタグがありません。</div>';}
   updateOvPlayBtn();
 }
-// タグがいまのフィルタ（種類＋選手）に一致するか
+// タグがいまのフィルタ（試合＋種類＋選手）に一致するか
 function ovTagMatches(g,tag,byId){
+  if(ovGameFilter!==null && g.id!==ovGameFilter)return false;
   if(ovFilter!==null){const ty=byId[tag.typeId];if(!ty||ty.name!==ovFilter)return false;}
   if(ovPlayerFilter==="__none__"){ if(tag.playerId)return false; }
   else if(ovPlayerFilter!==null){ if(tag.playerId!==ovPlayerFilter)return false; }
@@ -1092,6 +1121,11 @@ function reelTitleText(){
   else if(ovPlayerFilter){const p=(t.roster||[]).find(x=>x.id===ovPlayerFilter);if(p)parts.push(playerLabel(p));}
   if(ovFilter)parts.push(ovFilter);
   let head=parts.length?parts.join(" の "):(t?t.name:"");
+  // 試合フィルタがあるときは試合名を先頭に
+  if(ovGameFilter){
+    const g=games.find(x=>x.id===ovGameFilter);
+    if(g)head=g.name+" ─ "+head;
+  }
   return head+" 集";
 }
 function startOvPlay(){
