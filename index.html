@@ -441,9 +441,9 @@
         <div class="now">現在位置 <b id="nowTime">0:00</b></div>
       </div>
       <div class="transport">
-        <button class="tp-btn" id="back5">⏪ 5秒</button>
+        <button class="tp-btn" id="back5">⏪ 10秒</button>
         <button class="tp-btn" id="playpause">▶ / ⏸</button>
-        <button class="tp-btn" id="fwd5">5秒 ⏩</button>
+        <button class="tp-btn" id="fwd5">10秒 ⏩</button>
         <button class="tp-btn speed" id="speedBtn">1x</button>
       </div>
       <div class="tag-cols" id="tagCols">
@@ -457,7 +457,7 @@
         </div>
       </div>
       <div class="tag-buttons tag-col-body" id="tagButtonsNone" data-side="none"></div>
-      <div class="hint">タグは<b>2回押し</b>で区間を記録します。プレー開始時に1回押す→終了時にもう一度同じタグを押すと、その区間が記録されます。<kbd>1</kbd>〜<kbd>9</kbd>でタグ打ち、<kbd>,</kbd>／<kbd>.</kbd>で5秒戻る／進む。連続再生はこの区間どおりに再生されます。</div>
+      <div class="hint">タグは<b>2回押し</b>で区間を記録します。プレー開始時に1回押す→終了時にもう一度同じタグを押すと、その区間が記録されます。<kbd>1</kbd>〜<kbd>9</kbd>でタグ打ち、<kbd>,</kbd>／<kbd>.</kbd>で10秒戻る／進む。連続再生はこの区間どおりに再生されます。</div>
     </div>
     </div>
   </main>
@@ -1894,8 +1894,8 @@ function updatePlayAllBtn(){
   else{btn.textContent="▶ 連続再生";btn.classList.remove("playing");document.getElementById("playallInfo").textContent="";}
 }
 
-document.getElementById("back5").onclick=()=>skip(-5);
-document.getElementById("fwd5").onclick=()=>skip(5);
+document.getElementById("back5").onclick=()=>skip(-10);
+document.getElementById("fwd5").onclick=()=>skip(10);
 document.getElementById("playpause").onclick=togglePlay;
 document.getElementById("speedBtn").onclick=cycleSpeed;
 document.getElementById("playAllBtn").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
@@ -1956,8 +1956,8 @@ document.addEventListener("keydown",e=>{
   if(document.querySelector(".modal-bg.show"))return;
   if(e.target.tagName==="INPUT")return;
   const g=curGame();if(!g)return;
-  if(e.key===","){e.preventDefault();skip(-5);return;}
-  if(e.key==="."){e.preventDefault();skip(5);return;}
+  if(e.key===","){e.preventDefault();skip(-10);return;}
+  if(e.key==="."){e.preventDefault();skip(10);return;}
   if(e.code==="Space"){e.preventDefault();togglePlay();return;}
   const n=parseInt(e.key);
   if(n>=1&&n<=9&&g.tagTypes[n-1]){e.preventDefault();addTag(g.tagTypes[n-1].id);}
