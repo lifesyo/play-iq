@@ -338,6 +338,9 @@
   .tag-item .body{flex:1;min-width:0;}
   .tag-item .label{font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
   .tag-item .label .dot{width:9px;height:9px;border-radius:50%;}
+  .type-chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:7px;background:var(--panel-2);border:1px solid var(--line);cursor:pointer;transition:.12s;white-space:nowrap;font-weight:700;font-size:13px;}
+  .type-chip:hover{border-color:var(--accent-2);background:rgba(60,165,255,.08);}
+  .type-chip .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
   .player-chip{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px;background:rgba(60,165,255,.16);color:var(--accent-2);border:1px solid transparent;cursor:pointer;transition:.12s;white-space:nowrap;}
   .player-chip:hover{filter:brightness(1.15);border-color:var(--accent-2);}
   .player-chip.empty{background:transparent;color:var(--txt-dim);border:1px dashed var(--line);}
@@ -1354,6 +1357,7 @@ function renderAssignBar(){
   box.appendChild(none);
 }
 let pending=null; // {typeId, start} 計測中のタグ
+let lastAddedTagId=null; // 直前に追加したタグID（renderTagsで自動スクロール）
 function addTag(typeId){
   const g=curGame();if(!g)return;
   if(!playerReady()){alert("動画の読み込みを待ってください。");return;}
@@ -1363,9 +1367,11 @@ function addTag(typeId){
     let start=pending.start, end=t;
     if(end<start){const tmp=start;start=end;end=tmp;} // 逆順なら入れ替え
     if(end-start<0.3) end=start+0.3; // 最低長を確保
-    g.tags.push({id:"tag_"+Date.now()+"_"+Math.random().toString(36).slice(2,6),typeId,start,end,note:""});
+    const newId="tag_"+Date.now()+"_"+Math.random().toString(36).slice(2,6);
+    g.tags.push({id:newId,typeId,start,end,note:""});
     g.tags.sort((a,b)=>a.start-b.start);
     pending=null;
+    lastAddedTagId=newId; // 次のrenderTagsでこのタグまでスクロール
     renderTagButtons();renderTags();renderGames();scheduleSave();
   }else if(pending && pending.typeId!==typeId){
     // 別のタグが計測中：無視（1つずつ区間を作る）
@@ -1405,6 +1411,31 @@ function setTagPlayer(tagId,pid){
   const t=g.tags.find(x=>x.id===tagId);if(!t)return;
   t.playerId=pid||null;
   scheduleSave();
+}
+function setTagType(tagId,typeId){
+  const g=curGame();if(!g)return;
+  const t=g.tags.find(x=>x.id===tagId);if(!t)return;
+  t.typeId=typeId;
+  scheduleSave();
+}
+// タグの種類を変更するミニメニュー
+function closeTypeMenu(){const m=document.getElementById("activeTypeMenu");if(m)m.remove();}
+function openTypeMenu(anchor,tagId,currentTypeId){
+  closeTypeMenu();closePlayerMenu();
+  const g=curGame();if(!g)return;
+  const menu=document.createElement("div");menu.className="move-menu";menu.id="activeTypeMenu";
+  menu.innerHTML='<div class="mm-head">種類を変更</div>';
+  g.tagTypes.forEach(ty=>{
+    const b=document.createElement("button");b.className="mm-item";
+    b.innerHTML='<span class="dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+ty.color+';margin-right:7px;vertical-align:middle"></span>'+
+      escapeHtml(ty.name)+(ty.id===currentTypeId?' <span style="color:var(--accent-2);margin-left:6px">✓</span>':'');
+    b.disabled=(ty.id===currentTypeId);
+    b.onclick=(ev)=>{ev.stopPropagation();setTagType(tagId,ty.id);closeTypeMenu();renderTags();renderSummary&&renderSummary();renderGames();};
+    menu.appendChild(b);
+  });
+  document.body.appendChild(menu);
+  placeMenu(menu,anchor);
+  setTimeout(()=>document.addEventListener("click",closeTypeMenu,{once:true}),0);
 }
 // 選手選択ミニメニュー（タグ一覧の選手チップから／割り振りモードからも流用可）
 function closePlayerMenu(){const m=document.getElementById("activePlayerMenu");if(m)m.remove();}
@@ -1634,19 +1665,33 @@ function renderTags(){
     item.dataset.tagId=t.id;
     const pl=playerById(g,t.playerId);
     const playerChip='<span class="player-chip'+(pl?'':' empty')+'" title="選手を割り当て">'+(pl?'👤 '+escapeHtml(playerLabel(pl)):'＋ 選手')+'</span>';
+    const typeChip='<span class="type-chip" title="種類を変更"><span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+'</span>';
     item.innerHTML='<div class="time">'+timeLabel+dur+'</div><div class="body">'+
-      '<div class="label"><span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+playerChip+'</div>'+
+      '<div class="label">'+typeChip+playerChip+'</div>'+
       (t.note?'<div class="note">'+escapeHtml(t.note)+'</div>':"")+
       '<input class="note-input" placeholder="メモを追加…" value="'+escapeAttr(t.note)+'"></div>'+
       '<div class="del" title="削除">🗑</div>';
-    item.onclick=(ev)=>{if(ev.target.classList.contains("note-input")||ev.target.classList.contains("del")||ev.target.classList.contains("player-chip"))return;if(item.dataset.dragging==="1")return;seekTo(s);};
+    item.onclick=(ev)=>{
+      if(ev.target.classList.contains("note-input")||ev.target.classList.contains("del"))return;
+      if(ev.target.closest(".player-chip")||ev.target.closest(".type-chip"))return;
+      if(item.dataset.dragging==="1")return;
+      seekTo(s);
+    };
     const ni=item.querySelector(".note-input");ni.onclick=(ev)=>ev.stopPropagation();ni.oninput=(ev)=>setNote(t.id,ev.target.value);
     item.querySelector(".del").onclick=(ev)=>{ev.stopPropagation();delTag(t.id);};
     const chip=item.querySelector(".player-chip");
     chip.onclick=(ev)=>{ev.stopPropagation();openPlayerMenu(chip,t.playerId,(pid)=>{setTagPlayer(t.id,pid);renderTags();});};
+    const tchip=item.querySelector(".type-chip");
+    tchip.onclick=(ev)=>{ev.stopPropagation();openTypeMenu(tchip,t.id,t.typeId);};
     attachDragSort(item);
     list.appendChild(item);
   });
+  // 直前に追加したタグまで自動スクロール
+  if(lastAddedTagId){
+    const el=list.querySelector('.tag-item[data-tag-id="'+lastAddedTagId+'"]');
+    if(el)el.scrollIntoView({block:"center",behavior:"smooth"});
+    lastAddedTagId=null;
+  }
 }
 
 /* ===== 長押しドラッグで右タグ一覧を並び替え ===== */
