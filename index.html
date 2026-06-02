@@ -657,9 +657,17 @@ onAuthStateChanged(auth, async (user)=>{
 <script>
 const PALETTE=["#ff5a3c","#3ca5ff","#36d399","#fbbd23","#a78bfa","#f471b5","#2dd4bf","#fb923c"];
 const DEFAULT_TAGTYPES=()=>[
-  {id:"t1",name:"リバウンド",color:"#3ca5ff",side:"none"},
-  {id:"t2",name:"ターンオーバー",color:"#ff5a3c",side:"none"},
-  {id:"t3",name:"シュート",color:"#36d399",side:"none"},
+  // 自チーム
+  {id:"t1",name:"TO",       color:"#ff5a3c",side:"own"},
+  {id:"t2",name:"OR",       color:"#3ca5ff",side:"own"},
+  {id:"t3",name:"DR",       color:"#36d399",side:"own"},
+  {id:"t4",name:"得点",     color:"#fbbd23",side:"own"},
+  {id:"t5",name:"失点",     color:"#a78bfa",side:"own"},
+  {id:"t6",name:"PF",       color:"#f471b5",side:"own"},
+  {id:"t7",name:"シュートミス",color:"#2dd4bf",side:"own"},
+  // 相手
+  {id:"t8",name:"TO",       color:"#fb923c",side:"opp"},
+  {id:"t9",name:"OR",       color:"#3ca5ff",side:"opp"},
 ];
 let games=[],currentGameId=null,activeFilter=null,selectedColor=PALETTE[0];
 let teams=[],currentTeamId=null; // チーム {id,name,roster:[{id,no,name}]}
