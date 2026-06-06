@@ -30,18 +30,24 @@
     -webkit-font-smoothing:antialiased;
   }
   .app{
-    display:grid;grid-template-columns:240px 1fr 380px;grid-template-rows:auto 1fr;
+    display:grid;grid-template-columns:240px 1fr var(--aside-w,380px);grid-template-rows:auto 1fr;
     grid-template-areas:"head head head" "games main side";height:100vh;
     transition:grid-template-columns .25s ease;
   }
   /* 試合一覧の折りたたみ */
-  .app.games-collapsed{grid-template-columns:0 1fr 380px;}
+  .app.games-collapsed{grid-template-columns:0 1fr var(--aside-w,380px);}
   .app.games-collapsed .games{transform:translateX(-100%);opacity:0;pointer-events:none;}
   /* タグ一覧（右）の折りたたみ */
   .app.side-collapsed{grid-template-columns:240px 1fr 0;}
   .app.side-collapsed aside{transform:translateX(100%);opacity:0;pointer-events:none;}
   .app.games-collapsed.side-collapsed{grid-template-columns:0 1fr 0;}
-  aside{transition:transform .25s ease,opacity .2s ease;}
+  aside{transition:transform .25s ease,opacity .2s ease;position:relative;}
+  /* タグ一覧（aside）の左端にドラッグ仕切り */
+  .aside-resizer{position:absolute;left:-5px;top:0;bottom:0;width:12px;cursor:col-resize;z-index:5;display:flex;align-items:center;justify-content:center;touch-action:none;}
+  .aside-resizer::before{content:"";width:3px;height:46px;border-radius:3px;background:var(--line);transition:background .15s,height .15s;}
+  .aside-resizer:hover::before{background:var(--accent-2);height:64px;}
+  .aside-resizer.dragging::before{background:var(--accent-2);height:80px;}
+  .app.side-collapsed .aside-resizer{display:none;}
   .games{transition:transform .25s ease,opacity .2s ease;}
   /* 折りたたみ開閉ボタン（ヘッダー左） */
   .games-toggle{background:var(--panel-2);color:var(--txt);border:1px solid var(--line);cursor:pointer;width:32px;height:32px;border-radius:9px;font-size:16px;line-height:1;display:grid;place-items:center;transition:.12s;flex-shrink:0;}
@@ -465,6 +471,7 @@
     </div>
   </main>
   <aside>
+    <div class="aside-resizer" id="asideResizer" title="ドラッグで幅を調整"></div>
     <div class="side-head">
       <div class="row"><h2>タグ一覧</h2><span class="count-pill" id="countPill">0 件</span></div>
       <div class="summary" id="summary"></div>
@@ -674,7 +681,7 @@ let teams=[],currentTeamId=null; // チーム {id,name,roster:[{id,no,name}]}
 let selectedSide="none"; // タグモーダルの区分選択
 let editingTypeId=null;  // 編集中のタグ種別ID（新規作成時はnull）
 let tagTemplates=[]; // 定番タグ {name,color,side}
-let playerSize={split:70}; // 左（動画）カラムの幅%。ドラッグ仕切りで調節
+let playerSize={split:70, asideW:380}; // 左（動画）カラムの幅% / タグ一覧パネルの幅px
 function curGame(){return games.find(g=>g.id===currentGameId)||null;}
 function curTeam(){return teams.find(t=>t.id===currentTeamId)||null;}
 function uid(p){return (p||"id")+"_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
@@ -1994,6 +2001,9 @@ function applyPlayerSize(){
   // split = 左（動画）カラムの幅%。clampで35〜80%に制限
   const v=Math.max(35,Math.min(80, playerSize.split||70));
   document.querySelector("main").style.setProperty("--split-left", v+"%");
+  // タグ一覧の幅
+  const aw=Math.max(280,Math.min(640, playerSize.asideW||380));
+  document.querySelector(".app").style.setProperty("--aside-w", aw+"px");
 }
 (function initSplitter(){
   const splitter=document.getElementById("splitter");
@@ -2029,6 +2039,41 @@ function applyPlayerSize(){
   window.addEventListener("touchend",endDrag);
   // ダブルクリック/ダブルタップで標準（70%）に戻す
   splitter.addEventListener("dblclick",()=>{playerSize.split=70;applyPlayerSize();scheduleSave();});
+})();
+// タグ一覧パネルの幅をドラッグで変更
+(function initAsideResizer(){
+  const handle=document.getElementById("asideResizer");
+  if(!handle)return;
+  let dragging=false;
+  function startDrag(e){
+    dragging=true;handle.classList.add("dragging");
+    document.body.style.cursor="col-resize";
+    e.preventDefault();
+  }
+  function onMove(e){
+    if(!dragging)return;
+    const clientX=(e.touches&&e.touches[0])?e.touches[0].clientX:e.clientX;
+    // ウィンドウ右端からの距離 = aside幅
+    let w=window.innerWidth-clientX;
+    w=Math.max(280,Math.min(640,w));
+    playerSize.asideW=Math.round(w);
+    applyPlayerSize();
+    e.preventDefault();
+  }
+  function endDrag(){
+    if(!dragging)return;
+    dragging=false;handle.classList.remove("dragging");
+    document.body.style.cursor="";
+    scheduleSave();
+  }
+  handle.addEventListener("mousedown",startDrag);
+  handle.addEventListener("touchstart",startDrag,{passive:false});
+  window.addEventListener("mousemove",onMove);
+  window.addEventListener("touchmove",onMove,{passive:false});
+  window.addEventListener("mouseup",endDrag);
+  window.addEventListener("touchend",endDrag);
+  // ダブルクリック/ダブルタップで標準（380px）に戻す
+  handle.addEventListener("dblclick",()=>{playerSize.asideW=380;applyPlayerSize();scheduleSave();});
 })();
 document.addEventListener("keydown",e=>{
   if(document.querySelector(".modal-bg.show"))return;
@@ -2078,7 +2123,7 @@ window.onDataLoaded=(remote)=>{
     if(Array.isArray(remote.templates))tagTemplates=remote.templates;
     if(remote.playerSize&&typeof remote.playerSize==="object"){
       // 新形式 {split} / 旧形式 {w,h} 両対応（旧データは標準70%にリセット）
-      playerSize={split: remote.playerSize.split || 70};
+      playerSize={split: remote.playerSize.split || 70, asideW: remote.playerSize.asideW || 380};
     }
   }
   migrateTeams();
