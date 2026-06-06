@@ -936,19 +936,24 @@ function closeOverview(){
 }
 // チーム内の全タグ種類を集約（同名・同色をまとめる。種類は試合ごとに別IDなので名前で束ねる）
 function teamTagTypeAggregate(t){
-  const map=new Map(); // "name|side" -> {name,side,color,count}
+  // 相手(opp)は別物として分離、それ以外（own/none）は名前だけで合算
+  const map=new Map(); // key -> {name,side,color,count}
+  function keyFor(ty){
+    const s=(ty.side==="opp")?"opp":"team";
+    return ty.name+"|"+s;
+  }
   teamGames(t.id).forEach(g=>{
     const byId={};g.tagTypes.forEach(ty=>byId[ty.id]=ty);
     g.tags.forEach(tag=>{
       const ty=byId[tag.typeId];if(!ty)return;
-      const side=ty.side||"none";
-      const key=ty.name+"|"+side;
-      if(!map.has(key))map.set(key,{name:ty.name,side,color:ty.color,count:0});
+      const s=(ty.side==="opp")?"opp":"own";
+      const key=keyFor(ty);
+      if(!map.has(key))map.set(key,{name:ty.name,side:s,color:ty.color,count:0});
       map.get(key).count++;
     });
   });
-  // 並び順：自チーム → 相手 → どちらでもない、その中で件数の多い順
-  const sideRank={own:0, opp:1, none:2};
+  // 並び順：自チーム（own/none合算）→ 相手、その中で件数の多い順
+  const sideRank={own:0, opp:1};
   return [...map.values()].sort((a,b)=>{
     const ra=sideRank[a.side]??9, rb=sideRank[b.side]??9;
     if(ra!==rb)return ra-rb;
@@ -1064,9 +1069,11 @@ function ovTagMatches(g,tag,byId){
   if(ovGameFilter!==null && g.id!==ovGameFilter)return false;
   if(ovFilter!==null){
     const ty=byId[tag.typeId];if(!ty)return false;
-    // ovFilterは {name, side} の組
     if(ty.name!==ovFilter.name) return false;
-    if((ty.side||"none")!==ovFilter.side) return false;
+    // ovFilter.side="opp" なら相手のみ、それ以外（"own"扱い）は相手以外
+    const tagIsOpp=(ty.side==="opp");
+    const filterIsOpp=(ovFilter.side==="opp");
+    if(tagIsOpp!==filterIsOpp) return false;
   }
   if(ovPlayerFilter==="__none__"){ if(tag.playerId)return false; }
   else if(ovPlayerFilter!==null){ if(tag.playerId!==ovPlayerFilter)return false; }
