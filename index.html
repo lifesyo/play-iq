@@ -947,7 +947,13 @@ function teamTagTypeAggregate(t){
       map.get(key).count++;
     });
   });
-  return [...map.values()].sort((a,b)=>b.count-a.count);
+  // 並び順：自チーム → 相手 → どちらでもない、その中で件数の多い順
+  const sideRank={own:0, opp:1, none:2};
+  return [...map.values()].sort((a,b)=>{
+    const ra=sideRank[a.side]??9, rb=sideRank[b.side]??9;
+    if(ra!==rb)return ra-rb;
+    return b.count-a.count;
+  });
 }
 // 区分プレフィックス（自チームは無印、相手は「相手」、なしは「？」を付けない）
 function sideLabel(side){
