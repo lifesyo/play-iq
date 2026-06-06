@@ -1099,8 +1099,8 @@ function rebuildOverviewList(){
       const tl=(e!==undefined)?fmt(s)+"→"+fmt(e):fmt(s);
       const pl=playerById(g,tag.playerId);
       const pchip=pl?'<span class="ov-player">👤 '+escapeHtml(playerLabel(pl))+'</span>':'';
-      // 種類＋選手の両方が選択されているときだけ、行をプレー集ジャンプボタンにする
-      const jumpable=(ovFilter!==null && ovPlayerFilter!==null && ovPlayerFilter!=="__none__");
+      // 何らかの絞り込み（試合・種類・選手のいずれか）が効いているとき、行をプレー集ジャンプボタンに
+      const jumpable=(ovGameFilter!==null || ovFilter!==null || (ovPlayerFilter!==null && ovPlayerFilter!=="__none__"));
       const row=document.createElement("div");
       row.className="ov-tag"+(jumpable?" jumpable":"");row.style.borderLeftColor=ty.color;
       row.innerHTML='<div class="time">'+tl+'</div>'+
