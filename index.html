@@ -676,6 +676,24 @@ const DEFAULT_TAGTYPES=()=>[
   {id:"t8",name:"TO",       color:"#fb923c",side:"opp"},
   {id:"t9",name:"OR",       color:"#3ca5ff",side:"opp"},
 ];
+// 「資料」チーム用デフォルト：自/相手の区別をしない（全タグ side:"none"）
+const SCOUT_TAGTYPES=()=>[
+  {id:"t1",name:"シュートミス",color:"#2dd4bf",side:"none"},
+  {id:"t2",name:"OR",       color:"#3ca5ff",side:"none"},
+  {id:"t3",name:"TO",       color:"#ff5a3c",side:"none"},
+  {id:"t4",name:"DR",       color:"#36d399",side:"none"},
+  {id:"t5",name:"得点",     color:"#fbbd23",side:"none"},
+  {id:"t6",name:"失点",     color:"#a78bfa",side:"none"},
+  {id:"t7",name:"PF",       color:"#f471b5",side:"none"},
+  {id:"t8",name:"BLOB",     color:"#fb923c",side:"none"},
+  {id:"t9",name:"SLOB",     color:"#ff5a3c",side:"none"},
+];
+function defaultTagTypesForTeam(teamId){
+  const t=teams.find(x=>x.id===teamId);
+  // チーム名に「資料」が含まれる場合はスカウティング用デフォルト
+  if(t && (t.name||"").indexOf("資料")>=0) return SCOUT_TAGTYPES();
+  return DEFAULT_TAGTYPES();
+}
 let games=[],currentGameId=null,activeFilter=null,selectedColor=PALETTE[0];
 let teams=[],currentTeamId=null; // チーム {id,name,roster:[{id,no,name}]}
 let selectedSide="none"; // タグモーダルの区分選択
@@ -738,7 +756,7 @@ function createGame(){
   const vid=extractId(url);
   if(!vid){alert("YouTube の URL を確認してください。");return;}
   if(!currentTeamId){ alert("先にチームを追加・選択してください。"); return; }
-  const g={id:"g_"+Date.now(),teamId:currentTeamId,name,date,videoId:vid,tagTypes:DEFAULT_TAGTYPES(),tags:[]};
+  const g={id:"g_"+Date.now(),teamId:currentTeamId,name,date,videoId:vid,tagTypes:defaultTagTypesForTeam(currentTeamId),tags:[]};
   games.unshift(g);closeGameModal();renderGames();selectGame(g.id);scheduleSave();
 }
 function selectGame(id){
