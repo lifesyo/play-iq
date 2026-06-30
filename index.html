@@ -723,7 +723,7 @@ function teamGames(teamId){return games.filter(g=>g.teamId===teamId);}
 let player=null,pollTimer=null;
 function playerReady(){return !!(player&&typeof player.getCurrentTime==="function"&&typeof player.getPlayerState==="function"&&player.getPlayerState()!==-1);}
 function onYouTubeIframeAPIReady(){}
-function extractId(url){const m=url.match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})/);return m?m[1]:(url.trim().length===11?url.trim():null);}
+function extractId(url){const m=url.match(/(?:youtu\.be\/|v=|\/embed\/|\/shorts\/|\/live\/|\/v\/)([A-Za-z0-9_-]{11})/);return m?m[1]:(url.trim().length===11?url.trim():null);}
 function mountVideo(videoId){
   document.getElementById("playerEmpty").style.display="none";
   if(player){player.loadVideoById(videoId);startPoll();return;}
