@@ -647,6 +647,7 @@ window.PlayIQ = {
 };
 
 onAuthStateChanged(auth, async (user)=>{
+  window.IQBilling&&IQBilling.setUser(user);   /* IQ Series 課金 */
   if(user){
     currentUid = user.uid;
     window.onAuthIn && window.onAuthIn({name:user.displayName||"ユーザー", photo:user.photoURL||""});
@@ -2169,5 +2170,18 @@ if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(e=>console.log("SW登録失敗",e)); });
 }
 </script>
+
+<!-- ===== IQ Series 課金（ここから） ===== -->
+<script src="/iq-billing.js"></script>
+<script>
+  IQBilling.init({
+    app: 'play-iq',
+    checkoutEnabled: false,
+    subscribeUrl: 'https://stat-iq.vercel.app',
+    manageFrom:   'https://stat-iq.vercel.app',
+    trialDays: 14
+  });
+</script>
+<!-- ===== IQ Series 課金（ここまで） ===== -->
 </body>
 </html>
