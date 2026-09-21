@@ -292,7 +292,9 @@
   .cancel-pending{border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;padding:9px 10px;border-radius:9px;font-weight:700;font-size:12.5px;transition:.15s;grid-column:1/-1;}
   .cancel-pending:hover{background:rgba(255,90,60,.12);}
   .tag-item .time .dash{margin:0 4px;color:var(--txt-dim);font-weight:600;}
-  .tag-item .time .dur{display:block;font-size:10.5px;color:var(--txt-dim);font-weight:600;margin-top:2px;}
+  .tag-item .time .dur{display:inline-block;font-size:10.5px;color:var(--txt-dim);font-weight:700;margin-top:3px;padding:1px 7px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);cursor:pointer;transition:.12s;}
+  .tag-item .time .dur:hover{border-color:var(--accent);color:var(--accent);}
+  .tag-item .time .dur .pen{opacity:.55;font-size:9px;margin-left:3px;}
   .hint{font-size:11.5px;color:var(--txt-dim);line-height:1.6;}
   .hint kbd{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11px;font-family:inherit;color:var(--txt);}
   /* 記録モード切替バー */
@@ -1600,6 +1602,37 @@ function placeMenu(menu,anchor){
   if(top+mh>window.innerHeight-8)top=r.top-mh-4;
   menu.style.left=Math.max(8,left)+"px";menu.style.top=Math.max(8,top)+"px";
 }
+// タグの長さ（さかのぼり秒数）を後から選び直す。終了点はそのまま、開始点だけ動かす。
+function setTagLength(tagId,sec){
+  const g=curGame();if(!g)return;
+  const t=g.tags.find(x=>x.id===tagId);if(!t)return;
+  const e=tagEnd(t); if(e===undefined)return; // 区間のない旧タグは対象外
+  let start=Math.max(0,e-sec), end=e;
+  if(end-start<0.3) end=start+0.3;
+  t.start=start; t.end=end; delete t.time;
+  g.tags.sort((a,b)=>tagStart(a)-tagStart(b));
+  lastAddedTagId=tagId; // 直した区間まで自動スクロール
+  renderTags();renderGames();scheduleSave();
+}
+function closeLenMenu(){const m=document.getElementById("activeLenMenu");if(m)m.remove();}
+function openLenMenu(anchor,tagId){
+  closeLenMenu();closeTypeMenu();closePlayerMenu();
+  const g=curGame();if(!g)return;
+  const t=g.tags.find(x=>x.id===tagId);if(!t)return;
+  const e=tagEnd(t); if(e===undefined)return;
+  const curLen=Math.round(e-tagStart(t));
+  const menu=document.createElement("div");menu.className="move-menu";menu.id="activeLenMenu";
+  menu.innerHTML='<div class="mm-head">長さを変更（終了点はそのまま）</div>';
+  [3,5,10,15].forEach(sec=>{
+    const b=document.createElement("button");b.className="mm-item";
+    b.innerHTML='前'+sec+'秒'+(curLen===sec?' <span style="color:var(--accent-2);margin-left:6px">✓</span>':'');
+    b.onclick=(ev)=>{ev.stopPropagation();setTagLength(tagId,sec);closeLenMenu();};
+    menu.appendChild(b);
+  });
+  document.body.appendChild(menu);
+  placeMenu(menu,anchor);
+  setTimeout(()=>document.addEventListener("click",closeLenMenu,{once:true}),0);
+}
 // 旧タグ(time)と新タグ(start/end)の両方から開始・終了を取り出す
 function tagStart(t){return t.start!==undefined?t.start:t.time;}
 function tagEnd(t){return t.end!==undefined?t.end:undefined;}
@@ -1783,7 +1816,7 @@ function renderTags(){
     const ty=typeById(t.typeId);
     const s=tagStart(t), e=tagEnd(t);
     const timeLabel=(e!==undefined)?(fmt(s)+'<span class="dash">→</span>'+fmt(e)):fmt(s);
-    const dur=(e!==undefined)?'<span class="dur">'+Math.round(e-s)+'秒</span>':'';
+    const dur=(e!==undefined)?'<span class="dur" title="長さを変更">'+Math.round(e-s)+'秒<span class="pen">✎</span></span>':'';
     const item=document.createElement("div");item.className="tag-item";item.style.borderLeftColor=ty.color;
     item.dataset.tagId=t.id;
     const pl=playerById(g,t.playerId);
@@ -1796,12 +1829,14 @@ function renderTags(){
       '<div class="del" title="削除">🗑</div>';
     item.onclick=(ev)=>{
       if(ev.target.classList.contains("note-input")||ev.target.classList.contains("del"))return;
-      if(ev.target.closest(".player-chip")||ev.target.closest(".type-chip"))return;
+      if(ev.target.closest(".player-chip")||ev.target.closest(".type-chip")||ev.target.closest(".dur"))return;
       if(item.dataset.dragging==="1")return;
       seekTo(s);
     };
     const ni=item.querySelector(".note-input");ni.onclick=(ev)=>ev.stopPropagation();ni.oninput=(ev)=>setNote(t.id,ev.target.value);
     item.querySelector(".del").onclick=(ev)=>{ev.stopPropagation();delTag(t.id);};
+    const durEl=item.querySelector(".dur");
+    if(durEl)durEl.onclick=(ev)=>{ev.stopPropagation();openLenMenu(durEl,t.id);};
     const chip=item.querySelector(".player-chip");
     chip.onclick=(ev)=>{ev.stopPropagation();openPlayerMenu(chip,t.playerId,(pid)=>{setTagPlayer(t.id,pid);renderTags();});};
     const tchip=item.querySelector(".type-chip");

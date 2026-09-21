@@ -1,6 +1,6 @@
 // Play IQ Service Worker
 // アプリの基本ファイルをキャッシュしつつ、index.html / sw.js は常に最新を取りに行く。
-const CACHE = "playiq-v4";
+const CACHE = "playiq-v5";
 
 // オフライン用に最低限キャッシュするもの（アイコン等の静的物）
 const STATIC_ASSETS = [
