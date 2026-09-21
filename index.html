@@ -295,6 +295,17 @@
   .tag-item .time .dur{display:block;font-size:10.5px;color:var(--txt-dim);font-weight:600;margin-top:2px;}
   .hint{font-size:11.5px;color:var(--txt-dim);line-height:1.6;}
   .hint kbd{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:11px;font-family:inherit;color:var(--txt);}
+  /* 記録モード切替バー */
+  .rec-mode{display:flex;flex-direction:column;gap:8px;}
+  .rec-mode-row,.rec-back-opts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .rm-label{font-size:11px;color:var(--txt-dim);font-weight:700;letter-spacing:.3px;flex:0 0 auto;}
+  .rm-seg,.rm-secs{display:flex;gap:6px;flex:1;min-width:180px;}
+  .rm-seg-btn,.rm-sec-btn{flex:1;border:1px solid var(--line);background:var(--panel-2);color:var(--txt-dim);cursor:pointer;padding:7px 8px;border-radius:9px;font-weight:700;font-size:12px;transition:filter .15s,background .15s,color .15s,border-color .15s;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .rm-seg-btn:hover,.rm-sec-btn:hover{filter:brightness(1.15);}
+  .rm-seg-btn:active,.rm-sec-btn:active{transform:scale(.96);}
+  .rm-seg-btn.active{background:rgba(60,165,255,.16);border-color:var(--accent-2);color:var(--accent-2);}
+  .rm-sec-btn.active{background:rgba(255,90,60,.18);border-color:var(--accent);color:var(--accent);}
+  .rec-back-opts.hidden{display:none;}
   aside{grid-area:side;border-left:1px solid var(--line);background:rgba(20,25,35,.5);display:flex;flex-direction:column;overflow:hidden;}
   .side-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:12px;flex-shrink:0;max-height:calc(100vh - 200px);overflow-y:auto;}
   .side-head::-webkit-scrollbar{width:7px;}
@@ -454,6 +465,24 @@
         <button class="tp-btn" id="playpause">▶ / ⏸</button>
         <button class="tp-btn" id="fwd5">10秒 ⏩</button>
         <button class="tp-btn speed" id="speedBtn">1x</button>
+      </div>
+      <div class="rec-mode" id="recMode">
+        <div class="rec-mode-row">
+          <span class="rm-label">記録モード</span>
+          <div class="rm-seg" id="modeSeg">
+            <button class="rm-seg-btn" data-mode="back">⏱ さかのぼり</button>
+            <button class="rm-seg-btn" data-mode="range">区間（2回押し）</button>
+          </div>
+        </div>
+        <div class="rec-back-opts" id="backOpts">
+          <span class="rm-label">さかのぼり秒数</span>
+          <div class="rm-secs" id="secSeg">
+            <button class="rm-sec-btn" data-sec="3">3秒</button>
+            <button class="rm-sec-btn" data-sec="5">5秒</button>
+            <button class="rm-sec-btn" data-sec="10">10秒</button>
+            <button class="rm-sec-btn" data-sec="15">15秒</button>
+          </div>
+        </div>
       </div>
       <div class="tag-cols" id="tagCols">
         <div class="tag-col">
@@ -1417,10 +1446,45 @@ function renderAssignBar(){
 }
 let pending=null; // {typeId, start} 計測中のタグ
 let lastAddedTagId=null; // 直前に追加したタグID（renderTagsで自動スクロール）
+/* ===== 記録モード（端末ごとの設定。Firestoreには保存しない） ===== */
+let tagMode="back";   // "back"=1回押しで前N秒 / "range"=2回押しで区間
+let backSec=5;        // さかのぼり秒数：3|5|10|15
+try{
+  const m=localStorage.getItem("playiq_tagMode"); if(m==="back"||m==="range")tagMode=m;
+  const s=parseInt(localStorage.getItem("playiq_backSec"),10); if([3,5,10,15].includes(s))backSec=s;
+}catch(e){}
+function saveModePrefs(){try{localStorage.setItem("playiq_tagMode",tagMode);localStorage.setItem("playiq_backSec",String(backSec));}catch(e){}}
+function setTagMode(m){ if(m!=="back"&&m!=="range")return; tagMode=m; if(m==="back"&&pending)pending=null; saveModePrefs(); applyModeUI(); renderTagButtons(); }
+function setBackSec(s){ if(![3,5,10,15].includes(s))return; backSec=s; saveModePrefs(); applyModeUI(); }
+function applyModeUI(){
+  document.querySelectorAll("#modeSeg .rm-seg-btn").forEach(b=>b.classList.toggle("active",b.dataset.mode===tagMode));
+  document.querySelectorAll("#secSeg .rm-sec-btn").forEach(b=>b.classList.toggle("active",parseInt(b.dataset.sec,10)===backSec));
+  const backOpts=document.getElementById("backOpts"); if(backOpts)backOpts.classList.toggle("hidden",tagMode!=="back");
+  const hint=document.querySelector(".hint");
+  if(hint){
+    if(tagMode==="back"){
+      hint.innerHTML='<b>さかのぼりモード</b>：タグを<b>1回押す</b>と、その瞬間から<b>前'+backSec+'秒</b>を1区間として記録します。<kbd>1</kbd>〜<kbd>9</kbd>でタグ打ち、<kbd>,</kbd>／<kbd>.</kbd>で10秒戻る／進む。';
+    }else{
+      hint.innerHTML='タグは<b>2回押し</b>で区間を記録します。プレー開始時に1回押す→終了時にもう一度同じタグを押すと、その区間が記録されます。<kbd>1</kbd>〜<kbd>9</kbd>でタグ打ち、<kbd>,</kbd>／<kbd>.</kbd>で10秒戻る／進む。';
+    }
+  }
+}
 function addTag(typeId){
   const g=curGame();if(!g)return;
   if(!playerReady()){alert("動画の読み込みを待ってください。");return;}
   const t=player.getCurrentTime();
+  if(tagMode==="back"){
+    // さかのぼりモード：1回押しで「押した瞬間から前N秒」を1区間として即記録
+    let start=Math.max(0,t-backSec), end=t;
+    if(end-start<0.3) end=start+0.3; // 最低長を確保
+    const newId="tag_"+Date.now()+"_"+Math.random().toString(36).slice(2,6);
+    g.tags.push({id:newId,typeId,start,end,note:""});
+    g.tags.sort((a,b)=>a.start-b.start);
+    lastAddedTagId=newId;
+    renderTagButtons();renderTags();renderGames();scheduleSave();
+    return;
+  }
+  // ===== 区間モード（従来の2回押し）=====
   if(pending && pending.typeId===typeId){
     // 2回目：終了点を記録して確定
     let start=pending.start, end=t;
@@ -2002,6 +2066,9 @@ document.getElementById("back5").onclick=()=>skip(-10);
 document.getElementById("fwd5").onclick=()=>skip(10);
 document.getElementById("playpause").onclick=togglePlay;
 document.getElementById("speedBtn").onclick=cycleSpeed;
+document.querySelectorAll("#modeSeg .rm-seg-btn").forEach(b=>b.onclick=()=>setTagMode(b.dataset.mode));
+document.querySelectorAll("#secSeg .rm-sec-btn").forEach(b=>b.onclick=()=>setBackSec(parseInt(b.dataset.sec,10)));
+applyModeUI();
 document.getElementById("playAllBtn").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
 document.getElementById("assignModeBtn").onclick=()=>{assign.on?exitAssignMode():startAssignMode();};
 document.getElementById("assignExit").onclick=exitAssignMode;
