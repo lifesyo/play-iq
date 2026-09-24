@@ -2019,7 +2019,7 @@ document.getElementById("saveRoster").onclick=saveRoster;
 document.getElementById("cancelRoster").onclick=closeRosterModal;
 document.getElementById("rosterModalBg").onclick=(e)=>{if(e.target.id==="rosterModalBg")closeRosterModal();};
 // 横断ビュー
-document.getElementById("overviewBtn").onclick=openOverview;
+document.getElementById("overviewBtn").onclick=async function(){ if(!await iqGate())return; openOverview(); };
 document.getElementById("ovClose").onclick=closeOverview;
 document.getElementById("ovPlayAll").onclick=()=>startOvPlay();
 // プレー集ビューのイベント
@@ -2283,6 +2283,18 @@ if("serviceWorker" in navigator){
     manageFrom:   'https://stat-iq.vercel.app',
     trialDays: 14
   });
+</script>
+<script>
+/* ===== IQ Series 有料ゲート =====
+   判定が終わるまで最大3.6秒待ってから判断する。
+   読み込み直後に押されて誤って課金画面が出るのを防ぐため。 */
+async function iqGate(){
+  if(!window.IQBilling) return true;
+  for(var i=0;i<24 && !IQBilling.isReady(); i++){
+    await new Promise(function(r){setTimeout(r,150)});
+  }
+  return IQBilling.requirePro();
+}
 </script>
 <!-- ===== IQ Series 課金（ここまで） ===== -->
 </body>
