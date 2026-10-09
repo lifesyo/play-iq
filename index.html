@@ -341,6 +341,16 @@
   .assign-player:hover{filter:brightness(1.2);border-color:var(--accent-2);}
   .assign-player.current{background:var(--accent-2);color:#fff;border-color:var(--accent-2);}
   .assign-player.none-opt{border-style:dashed;color:var(--txt-dim);}
+  /* 複数選択モード切替（割り振りバー／選手メニュー共通） */
+  .multi-toggle{background:var(--panel-2);color:var(--txt-dim);border:1px solid var(--line);cursor:pointer;padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;font-family:inherit;transition:.12s;flex-shrink:0;white-space:nowrap;}
+  .multi-toggle:hover{color:var(--accent-2);}
+  .multi-toggle.active{background:var(--accent-2);color:#fff;border-color:var(--accent-2);}
+  .assign-player.multi::before{content:"☐ ";opacity:.7;}
+  .assign-player.multi.current::before{content:"☑ ";opacity:1;}
+  .move-menu .mm-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 6px 6px 9px;border-bottom:1px solid var(--line);margin-bottom:4px;}
+  .move-menu .mm-top .mm-head{border:none;padding:0;margin:0;white-space:nowrap;}
+  .move-menu .mm-item.checked{color:var(--accent-2);}
+  .move-menu .mm-done{display:block;width:100%;margin-top:4px;background:var(--accent-2);color:#fff;border:none;border-radius:7px;padding:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;}
   .assign-empty{font-size:12px;color:var(--txt-dim);line-height:1.7;}
   .playall-btn{background:var(--accent);color:#fff;border:none;cursor:pointer;padding:8px 14px;border-radius:9px;font-weight:700;font-size:13px;transition:.12s;}
   .playall-btn:hover{filter:brightness(1.1);}
@@ -365,6 +375,7 @@
   .type-chip:hover{border-color:var(--accent-2);background:rgba(60,165,255,.08);}
   .type-chip .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
   .player-chip{font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px;background:rgba(60,165,255,.16);color:var(--accent-2);border:1px solid transparent;cursor:pointer;transition:.12s;white-space:nowrap;}
+  .player-chip.many{white-space:normal;}
   .player-chip:hover{filter:brightness(1.15);border-color:var(--accent-2);}
   .player-chip.empty{background:transparent;color:var(--txt-dim);border:1px dashed var(--line);}
   .player-chip.empty:hover{color:var(--accent-2);border-color:var(--accent-2);}
@@ -632,6 +643,7 @@
         <div class="assign-row1">
           <span class="assign-progress" id="assignProgress">1 / 1</span>
           <span class="assign-tagname" id="assignTagName"></span>
+          <button class="multi-toggle" id="assignMulti" title="1つのタグに複数の選手を割り当てる">👥 複数選択</button>
           <button class="assign-exit" id="assignExit">✕ 終了</button>
         </div>
         <div class="assign-nav">
@@ -1150,7 +1162,8 @@ function teamPlayerAggregate(t){
   const counts={}; let unassigned=0;
   teamGames(t.id).forEach(g=>{
     g.tags.forEach(tag=>{
-      if(tag.playerId)counts[tag.playerId]=(counts[tag.playerId]||0)+1;
+      const ids=tagPlayerIds(tag);
+      if(ids.length) ids.forEach(id=>{counts[id]=(counts[id]||0)+1;});
       else unassigned++;
     });
   });
@@ -1255,8 +1268,8 @@ function ovTagMatches(g,tag,byId){
     const filterIsOpp=(ovFilter.side==="opp");
     if(tagIsOpp!==filterIsOpp) return false;
   }
-  if(ovPlayerFilter==="__none__"){ if(tag.playerId)return false; }
-  else if(ovPlayerFilter!==null){ if(tag.playerId!==ovPlayerFilter)return false; }
+  if(ovPlayerFilter==="__none__"){ if(tagPlayerIds(tag).length)return false; }
+  else if(ovPlayerFilter!==null){ if(!tagPlayerIds(tag).includes(ovPlayerFilter))return false; }
   return true;
 }
 // 見出し＋その試合のタグ行を正しい入れ子で組み直す
@@ -1277,8 +1290,7 @@ function rebuildOverviewList(){
       const ty=byId[tag.typeId]||{name:"?",color:"#888"};
       const s=tagStart(tag),e=tagEnd(tag);
       const tl=(e!==undefined)?fmt(s)+"→"+fmt(e):fmt(s);
-      const pl=playerById(g,tag.playerId);
-      const pchip=pl?'<span class="ov-player">👤 '+escapeHtml(playerLabel(pl))+'</span>':'';
+      const pchip=tagPlayerLabels(g,tag).map(l=>'<span class="ov-player">👤 '+escapeHtml(l)+'</span>').join('');
       // 何らかの絞り込み（試合・種類・選手のいずれか）が効いているとき、行をプレー集ジャンプボタンに
       const jumpable=(ovGameFilter!==null || ovFilter!==null || (ovPlayerFilter!==null && ovPlayerFilter!=="__none__"));
       const row=document.createElement("div");
@@ -1321,10 +1333,9 @@ function buildOvQueue(){
     tags=tags.filter(tag=>ovTagMatches(g,tag,byId));
     tags.forEach(tag=>{
       const ty=byId[tag.typeId]||{name:"?",color:"#888"};
-      const pl=playerById(g,tag.playerId);
       q.push({gameId:g.id,videoId:g.videoId,gameName:g.name,gameDate:g.date||"",
         start:tagStart(tag),end:tagEnd(tag),
-        typeName:ty.name,color:ty.color,playerName:pl?playerLabel(pl):"",note:tag.note||""});
+        typeName:ty.name,color:ty.color,playerName:tagPlayerLabels(g,tag).join("・"),note:tag.note||""});
     });
   });
   return q;
@@ -1465,7 +1476,7 @@ function setReelPlayBtn(paused){
   b.textContent=paused?"▶ 再生":"⏸ 一時停止";
 }
 /* ===== 選手割り振りモード（連続再生しながら一括割り当て） ===== */
-let assign={on:false,queue:[],i:0,watch:null};
+let assign={on:false,queue:[],i:0,watch:null,multi:false};
 function currentShownTags(){
   // いまタグ一覧に表示されている順序（フィルタ・手動順を反映）でタグ配列を返す
   const g=curGame();if(!g)return [];
@@ -1488,7 +1499,7 @@ function startAssignMode(){
   if(q.length===0){alert("割り振るタグがありません。");return;}
   // 連続再生が動いていたら止める
   if(playAll.on)stopPlayAll();
-  assign={on:true,queue:q,i:0,watch:null};
+  assign={on:true,queue:q,i:0,watch:null,multi:false};
   document.getElementById("assignBar").style.display="flex";
   document.getElementById("assignModeBtn").textContent="👤 割り振り中…";
   assignGoto(0);
@@ -1542,6 +1553,18 @@ function assignReplay(){
 function assignPick(pid){
   if(!assign.on)return;
   const t=assign.queue[assign.i];if(!t)return;
+  if(assign.multi){
+    // 複数選択：タップで追加／解除。自動では次へ進まない（「次 ▶」で進む）
+    if(pid===null){ setTagPlayers(t.id,[]); }
+    else{
+      const ids=tagPlayerIds(t);
+      const k=ids.indexOf(pid);
+      if(k>=0)ids.splice(k,1); else ids.push(pid);
+      setTagPlayers(t.id,ids);
+    }
+    renderAssignBar();renderTags();
+    return;
+  }
   setTagPlayer(t.id,pid);
   renderAssignBar(); // 選択状態を反映
   // 割り当てたら自動で次へ（少し間を置く）
@@ -1557,15 +1580,18 @@ function renderAssignBar(){
   const tl=(e!==undefined)?fmt(s)+"→"+fmt(e):fmt(s);
   document.getElementById("assignTagName").innerHTML='<span style="color:'+ty.color+'">●</span> '+escapeHtml(ty.name)+' <span style="color:var(--txt-dim);font-weight:600">'+tl+'</span>';
   // 選手ボタン
+  const mt=document.getElementById("assignMulti");
+  if(mt){mt.classList.toggle("active",!!assign.multi);mt.textContent=assign.multi?"👥 複数選択中":"👥 複数選択";}
   const box=document.getElementById("assignPlayers");box.innerHTML="";
   const roster=gameRoster(g);
+  const cur=tagPlayerIds(t);
   roster.forEach(p=>{
-    const b=document.createElement("button");b.className="assign-player"+(t.playerId===p.id?" current":"");
+    const b=document.createElement("button");b.className="assign-player"+(assign.multi?" multi":"")+(cur.includes(p.id)?" current":"");
     b.textContent=playerLabel(p);
     b.onclick=()=>assignPick(p.id);
     box.appendChild(b);
   });
-  const none=document.createElement("button");none.className="assign-player none-opt"+(!t.playerId?" current":"");
+  const none=document.createElement("button");none.className="assign-player none-opt"+(cur.length===0?" current":"");
   none.textContent="割当なし";none.onclick=()=>assignPick(null);
   box.appendChild(none);
 }
@@ -1654,11 +1680,29 @@ function playerLabel(p){
   if(no)return "#"+no;
   return nm;
 }
-function setTagPlayer(tagId,pid){
+/* タグに割り当てられた選手ID一覧。
+   1人のときは従来どおり playerId のみ、2人以上のときは playerIds も持つ（playerId は先頭の選手）。
+   古いデータ・古い端末で書いたデータもそのまま読める。 */
+function tagPlayerIds(t){
+  if(!t)return [];
+  if(Array.isArray(t.playerIds)&&t.playerIds.length>0&&(!t.playerId||t.playerIds[0]===t.playerId)) return t.playerIds.slice();
+  return t.playerId?[t.playerId]:[];
+}
+function setTagPlayersOn(t,ids){
+  ids=(ids||[]).filter((v,i,a)=>v&&a.indexOf(v)===i);
+  t.playerId=ids[0]||null;
+  if(ids.length>1) t.playerIds=ids; else delete t.playerIds;
+}
+function setTagPlayers(tagId,ids){
   const g=curGame();if(!g)return;
   const t=g.tags.find(x=>x.id===tagId);if(!t)return;
-  t.playerId=pid||null;
+  setTagPlayersOn(t,ids);
   scheduleSave();
+}
+function setTagPlayer(tagId,pid){ setTagPlayers(tagId,pid?[pid]:[]); }
+// 表示用：割り当て選手のラベル（名簿にいない選手は除く）
+function tagPlayerLabels(g,t){
+  return tagPlayerIds(t).map(id=>playerById(g,id)).filter(Boolean).map(playerLabel);
 }
 function setTagType(tagId,typeId){
   const g=curGame();if(!g)return;
@@ -1687,7 +1731,9 @@ function openTypeMenu(anchor,tagId,currentTypeId){
 }
 // 選手選択ミニメニュー（タグ一覧の選手チップから／割り振りモードからも流用可）
 function closePlayerMenu(){const m=document.getElementById("activePlayerMenu");if(m)m.remove();}
-function openPlayerMenu(anchor,currentPid,onPick){
+// currentIds: 今の割り当て（配列）。onPick(ids) で確定。
+// 通常は1人選ぶと即確定。「👥 複数選択」を押すとチェック式になり、「完了」かメニュー外タップで確定。
+function openPlayerMenu(anchor,currentIds,onPick){
   closePlayerMenu();
   const g=curGame();if(!g)return;
   const roster=gameRoster(g);
@@ -1701,21 +1747,48 @@ function openPlayerMenu(anchor,currentPid,onPick){
     setTimeout(()=>document.addEventListener("click",closePlayerMenu,{once:true}),0);
     return;
   }
-  menu.innerHTML='<div class="mm-head">選手を割り当て</div>';
-  // 「未割り当て」に戻す選択肢
-  const none=document.createElement("button");none.className="mm-item";none.textContent="（割り当てなし）";
-  none.disabled=!currentPid;
-  none.onclick=(e)=>{e.stopPropagation();onPick(null);closePlayerMenu();};
-  menu.appendChild(none);
-  roster.forEach(p=>{
-    const b=document.createElement("button");b.className="mm-item";
-    b.textContent=playerLabel(p)+(p.id===currentPid?" ✓":"");
-    b.onclick=(e)=>{e.stopPropagation();onPick(p.id);closePlayerMenu();};
-    menu.appendChild(b);
-  });
+  const initial=(currentIds||[]).slice();
+  let sel=initial.slice();
+  let multi=initial.length>1; // すでに複数割り当て済みなら最初から複数モード
+  let done=false;
+  function commit(){ if(done)return; done=true; document.removeEventListener("click",outside); onPick(sel.slice()); closePlayerMenu(); }
+  function outside(e){
+    if(menu.contains(e.target))return;
+    if(multi && sel.join(",")!==initial.join(",")) commit(); else { done=true; document.removeEventListener("click",outside); closePlayerMenu(); }
+  }
+  menu.onclick=(e)=>e.stopPropagation();
+  function render(){
+    menu.innerHTML="";
+    const top=document.createElement("div");top.className="mm-top";
+    top.innerHTML='<div class="mm-head">選手を割り当て</div>';
+    const mt=document.createElement("button");mt.className="multi-toggle"+(multi?" active":"");
+    mt.textContent=multi?"👥 複数選択中":"👥 複数選択";
+    mt.onclick=()=>{multi=!multi;render();};
+    top.appendChild(mt);menu.appendChild(top);
+    const none=document.createElement("button");none.className="mm-item";none.textContent="（割り当てなし）";
+    none.disabled=sel.length===0;
+    none.onclick=()=>{ sel=[]; if(multi)render(); else commit(); };
+    menu.appendChild(none);
+    roster.forEach(p=>{
+      const on=sel.includes(p.id);
+      const b=document.createElement("button");b.className="mm-item"+(on?" checked":"");
+      b.textContent=(multi?(on?"☑ ":"☐ "):"")+playerLabel(p)+(!multi&&on?" ✓":"");
+      b.onclick=()=>{
+        if(multi){ const k=sel.indexOf(p.id); if(k>=0)sel.splice(k,1); else sel.push(p.id); render(); }
+        else{ sel=[p.id]; commit(); }
+      };
+      menu.appendChild(b);
+    });
+    if(multi){
+      const d=document.createElement("button");d.className="mm-done";
+      d.textContent="完了（"+sel.length+"人）";
+      d.onclick=commit;menu.appendChild(d);
+    }
+  }
+  render();
   document.body.appendChild(menu);
   placeMenu(menu,anchor);
-  setTimeout(()=>document.addEventListener("click",closePlayerMenu,{once:true}),0);
+  setTimeout(()=>document.addEventListener("click",outside),0);
 }
 function placeMenu(menu,anchor){
   const r=anchor.getBoundingClientRect();
@@ -1942,8 +2015,8 @@ function renderTags(){
     const dur=(e!==undefined)?'<span class="dur" title="長さを変更">'+Math.round(e-s)+'秒<span class="pen">✎</span></span>':'';
     const item=document.createElement("div");item.className="tag-item";item.style.borderLeftColor=ty.color;
     item.dataset.tagId=t.id;
-    const pl=playerById(g,t.playerId);
-    const playerChip='<span class="player-chip'+(pl?'':' empty')+'" title="選手を割り当て">'+(pl?'👤 '+escapeHtml(playerLabel(pl)):'＋ 選手')+'</span>';
+    const pls=tagPlayerLabels(g,t);
+    const playerChip='<span class="player-chip'+(pls.length?'':' empty')+(pls.length>1?' many':'')+'" title="選手を割り当て">'+(pls.length?'👤 '+pls.map(escapeHtml).join('・'):'＋ 選手')+'</span>';
     const typeChip='<span class="type-chip" title="種類を変更"><span class="dot" style="background:'+ty.color+'"></span>'+escapeHtml(ty.name)+'</span>';
     item.innerHTML='<div class="time">'+timeLabel+dur+'</div><div class="body">'+
       '<div class="label">'+typeChip+playerChip+'</div>'+
@@ -1961,7 +2034,7 @@ function renderTags(){
     const durEl=item.querySelector(".dur");
     if(durEl)durEl.onclick=(ev)=>{ev.stopPropagation();openLenMenu(durEl,t.id);};
     const chip=item.querySelector(".player-chip");
-    chip.onclick=(ev)=>{ev.stopPropagation();openPlayerMenu(chip,t.playerId,(pid)=>{setTagPlayer(t.id,pid);renderTags();});};
+    chip.onclick=(ev)=>{ev.stopPropagation();openPlayerMenu(chip,tagPlayerIds(t),(ids)=>{setTagPlayers(t.id,ids);renderTags();});};
     const tchip=item.querySelector(".type-chip");
     tchip.onclick=(ev)=>{ev.stopPropagation();openTypeMenu(tchip,t.id,t.typeId);};
     attachDragSort(item);
@@ -2230,6 +2303,7 @@ applyModeUI();
 document.getElementById("playAllBtn").onclick=()=>{playAll.on?stopPlayAll():startPlayAll();};
 document.getElementById("assignModeBtn").onclick=()=>{assign.on?exitAssignMode():startAssignMode();};
 document.getElementById("assignExit").onclick=exitAssignMode;
+document.getElementById("assignMulti").onclick=()=>{assign.multi=!assign.multi;renderAssignBar();};
 document.getElementById("assignPrev").onclick=()=>{if(assign.on)assignGoto(assign.i-1);};
 document.getElementById("assignNext").onclick=()=>{if(assign.on)assignGoto(assign.i+1);};
 document.getElementById("assignReplay").onclick=assignReplay;
