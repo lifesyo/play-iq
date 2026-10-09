@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<script>
+/* iPhone のときだけノッチ/ホームバー領域まで使う（iPad・Mac は従来どおり） */
+(function(){try{if(window.matchMedia("(max-width:600px), (max-height:500px) and (pointer:coarse)").matches){var m=document.querySelector('meta[name=viewport]');m.setAttribute("content",m.getAttribute("content")+", viewport-fit=cover");}}catch(e){}})();
+</script>
 <meta name="format-detection" content="telephone=no">
 <title>Play IQ — タグ付けプレイヤー</title>
 <link rel="manifest" href="manifest.json">
@@ -402,6 +406,118 @@
   .swatch.sel{border-color:#fff;transform:scale(1.12);}
   .modal-actions{display:flex;gap:10px;}
   .modal-actions .btn{flex:1;justify-content:center;text-align:center;}
+
+  /* =====================================================================
+     iPhone 対応
+     スマホサイズのときだけ効く（縦持ち：幅600px以下／横持ち：高さ500px以下のタッチ端末）。
+     iPad・Mac はこのブロックに一切該当しないので、見た目は従来のまま。
+     縦持ち：動画を上に固定 → 下のタブで「試合／記録／タグ一覧」を切替
+     横持ち：左に動画、右にパネル（同じタブで切替）
+     ===================================================================== */
+  .phone-tabs{display:none;}
+  @media (max-width:600px), (max-height:500px) and (pointer:coarse){
+    html,body{overflow:hidden;}
+    .app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
+    /* ヘッダーをコンパクトに */
+    header{flex-shrink:0;gap:8px;padding:8px 12px;
+      padding-top:max(8px,env(safe-area-inset-top));
+      padding-left:max(12px,env(safe-area-inset-left));
+      padding-right:max(12px,env(safe-area-inset-right));}
+    #gamesToggle,#deckToggle,#sideToggle{display:none;}
+    .logo .mark{width:30px;height:30px;border-radius:9px;font-size:12px;}
+    .logo > div:last-child{display:none;}
+    .cur-game{flex-direction:column;align-items:flex-start;gap:0;}
+    .cur-game .title{font-size:14px;max-width:100%;}
+    .cur-game .date{font-size:10.5px;}
+    .auth{gap:6px;}
+    .sync-state{font-size:10px;}
+    #loginBtn{padding:7px 10px;font-size:12px;}
+    .user-chip{padding:3px 4px;gap:2px;}
+    .user-chip span{display:none;}
+    /* PC/iPad 用の折りたたみ・ドラッグ仕切りはスマホでは使わない（タブで切替） */
+    .games,aside{display:none;transform:none !important;opacity:1 !important;pointer-events:auto !important;border:none;}
+    .aside-resizer,.splitter{display:none !important;}
+    main{flex:none;padding:0;flex-direction:column;overflow:visible;gap:0;}
+    .video-col{flex:none !important;width:100%;}
+    .player-wrap{max-width:100%;border-radius:0;border:none;border-bottom:1px solid var(--line);box-shadow:none;}
+    .player-empty{font-size:12px;line-height:1.7;padding:12px;}
+    .player-empty b{font-size:14px;margin-bottom:4px;}
+    .deck-col{display:none !important;}
+    /* タブごとの表示 */
+    .app[data-ptab="rec"] main{flex:1;min-height:0;}
+    .app[data-ptab="rec"] .deck-col{display:flex !important;flex:1;min-height:0;overflow-y:auto;padding:10px 10px 14px;-webkit-overflow-scrolling:touch;}
+    .app[data-ptab="games"] .games{display:flex;flex:1;min-height:0;}
+    .app[data-ptab="tags"] aside{display:flex;flex:1;min-height:0;}
+    /* 記録（タグを打つ）欄 */
+    .tagdeck{padding:12px;gap:11px;}
+    .transport{gap:6px;}
+    .tp-btn{padding:11px 4px;font-size:13px;}
+    .tp-btn.speed{flex:0 0 52px;}
+    .rm-seg,.rm-secs{min-width:0;flex:1 1 100%;}
+    .rm-seg-btn,.rm-sec-btn{padding:8px 4px;font-size:11.5px;}
+    .tag-cols{gap:10px;}
+    .tag-buttons{grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px;}
+    .tag-btn,.add-tag,.cancel-pending{padding:11px 8px;font-size:12.5px;}
+    .hint{display:none;}
+    /* 試合一覧 */
+    .games-list{padding:10px 12px;}
+    .game-card{padding:13px 14px;}
+    .game-card .gdel,.game-card .gmove{opacity:.5;}
+    /* タグ一覧 */
+    .side-head{padding:12px;gap:10px;max-height:45%;}
+    .tag-list{padding:10px;}
+    .tag-item .del{opacity:.5;}
+    /* 下部タブバー */
+    .phone-tabs{display:flex;flex-shrink:0;border-top:1px solid var(--line);background:rgba(20,25,35,.97);
+      padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);}
+    .ptab{flex:1;background:none;border:none;color:var(--txt-dim);padding:8px 4px 7px;font-family:inherit;font-size:10.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;}
+    .ptab .pi{font-size:18px;line-height:1;}
+    .ptab.active{color:var(--accent);}
+    .ptab .pcount{font-variant-numeric:tabular-nums;opacity:.85;}
+    /* 表示順：ヘッダー → 動画 → パネル → タブ（どのタブでも動画が上） */
+    header{order:0;} main{order:1;} .games,aside{order:2;} .phone-tabs{order:3;}
+    /* プラン表示バッジ（FREE/PRO）がタブに重ならないよう上へ逃がす */
+    #iqb-auto-badge{bottom:calc(62px + env(safe-area-inset-bottom)) !important;}
+    /* モーダル */
+    .modal,.modal.wide{width:calc(100vw - 28px);max-height:calc(100dvh - 40px);overflow-y:auto;padding:20px;}
+    .modal input[type=text],.modal input[type=date]{font-size:16px;}
+    /* 横断ビュー */
+    .ov-head{gap:8px;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));}
+    .ov-head h2{font-size:15px;}
+    .ov-playall{padding:7px 11px;font-size:12px;}
+    .ov-body{flex-direction:column;}
+    .ov-side{flex:none;max-height:30vh;border-right:none;border-bottom:1px solid var(--line);padding:12px;}
+    .ov-main{padding:12px;padding-bottom:max(12px,env(safe-area-inset-bottom));}
+    .ov-tag{flex-wrap:wrap;gap:6px 10px;}
+    /* プレー集 */
+    .reel-head{padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));}
+    .reel-head h2{font-size:14px;}
+    .reel-body{flex-direction:column;}
+    .reel-video-col{flex:none;justify-content:flex-start;padding:0 0 10px;gap:10px;}
+    .reel-player-wrap{max-width:100%;border-radius:0;border-left:none;border-right:none;}
+    .reel-controls{gap:6px;padding:0 8px;}
+    .reel-ctrl{padding:8px 11px;font-size:12.5px;}
+    .reel-list-col{flex:1;min-height:0;max-height:none;border-left:none;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);}
+  }
+  /* iPhone 横持ち：左に動画、右にパネル */
+  @media (max-height:500px) and (pointer:coarse){
+    .app{display:grid;grid-template-columns:minmax(0,1fr) min(340px,44vw) !important;grid-template-rows:auto minmax(0,1fr) auto;
+      grid-template-areas:"head head" "video panel" "video tabs";}
+    header{padding-top:6px;padding-bottom:6px;}
+    .cur-game{flex-direction:row;align-items:center;gap:10px;}
+    main{display:contents;}
+    .video-col{grid-area:video;justify-content:center;padding:6px;padding-left:max(6px,env(safe-area-inset-left));overflow:hidden;}
+    .player-wrap{max-width:min(100%, calc((100dvh - 64px) * 16 / 9));border-radius:10px;border:1px solid var(--line);}
+    .deck-col,.games,aside{grid-area:panel;border-left:1px solid var(--line);}
+    .phone-tabs{grid-area:tabs;border-left:1px solid var(--line);}
+    .side-head{max-height:55%;}
+    .ov-body{flex-direction:row;}
+    .ov-side{flex:0 0 220px;max-height:none;border-right:1px solid var(--line);border-bottom:none;}
+    .reel-body{flex-direction:row;}
+    .reel-video-col{flex:1 1 0;justify-content:center;padding:8px;}
+    .reel-player-wrap{max-width:min(100%, calc((100dvh - 120px) * 16 / 9));border-radius:10px;border:1px solid var(--line);}
+    .reel-list-col{flex:0 0 min(300px,40vw);border-left:1px solid var(--line);border-top:none;}
+  }
 </style>
 </head>
 <body>
@@ -530,6 +646,12 @@
       <div class="empty-list">試合を選ぶとタグが表示されます。</div>
     </div>
   </aside>
+  <!-- iPhone 用の下部タブ（iPad・Mac では非表示） -->
+  <nav class="phone-tabs" id="phoneTabs">
+    <button class="ptab" data-tab="games"><span class="pi">☰</span>試合</button>
+    <button class="ptab" data-tab="rec"><span class="pi">✎</span>記録</button>
+    <button class="ptab" data-tab="tags"><span class="pi">▦</span><span>タグ一覧 <span class="pcount" id="ptabCount"></span></span></button>
+  </nav>
 </div>
 <div class="modal-bg" id="gameModalBg">
   <div class="modal">
@@ -801,6 +923,7 @@ function selectGame(id){
   // 試合を選んだら一覧は用済み → 自動で畳んで動画スペースを最大化（広い画面のみ）
   if(window.innerWidth>900){ document.querySelector(".app").classList.add("games-collapsed"); }
   mountVideo(g.videoId);
+  if(isPhone()) setPhoneTab("rec");
   renderGames();renderTagButtons();renderFilters();renderTags();
 }
 function delGame(id){
@@ -2266,6 +2389,27 @@ document.getElementById("logoutBtn").onclick=()=>window.PlayIQ&&window.PlayIQ.lo
 migrateTeams();
 renderTeams();renderGames();renderTagButtons();renderFilters();renderTags();
 applyPlayerSize();
+
+/* ===== iPhone 用タブ切替（iPad・Mac では CSS 上なにも起きない） ===== */
+function isPhone(){
+  return window.matchMedia("(max-width:600px), (max-height:500px) and (pointer:coarse)").matches;
+}
+function setPhoneTab(t){
+  const app=document.querySelector(".app");
+  if(!app)return;
+  app.dataset.ptab=t;
+  document.querySelectorAll("#phoneTabs .ptab").forEach(b=>b.classList.toggle("active",b.dataset.tab===t));
+}
+document.querySelectorAll("#phoneTabs .ptab").forEach(b=>b.onclick=()=>setPhoneTab(b.dataset.tab));
+// タグ件数をタブにも表示
+(function(){
+  const pill=document.getElementById("countPill"), out=document.getElementById("ptabCount");
+  if(!pill||!out)return;
+  const sync=()=>{const n=parseInt(pill.textContent,10)||0;out.textContent=n?String(n):"";};
+  new MutationObserver(sync).observe(pill,{childList:true,characterData:true,subtree:true});
+  sync();
+})();
+if(!document.querySelector(".app").dataset.ptab) setPhoneTab(currentGameId?"rec":"games");
 
 /* PWA: register service worker */
 if("serviceWorker" in navigator){
