@@ -426,6 +426,17 @@
   .side-compare .sc-vs{color:var(--txt-dim);}
   .side-compare b{font-size:16px;font-variant-numeric:tabular-nums;margin-left:3px;}
   .tpl-list{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px;}
+  /* チームの登録タグ */
+  .lib-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;}
+  .lib-head label{margin:0 !important;}
+  .lib-edit{background:var(--panel-2);color:var(--txt-dim);border:1px solid var(--line);cursor:pointer;padding:4px 10px;border-radius:7px;font-size:11.5px;font-weight:700;font-family:inherit;flex-shrink:0;}
+  .lib-edit.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .lib-hint{font-size:11.5px;color:var(--txt-dim);margin:-8px 0 14px;line-height:1.5;}
+  .lib-list{max-height:34vh;overflow-y:auto;}
+  .tpl-chip.added{opacity:.5;cursor:default;}
+  .tpl-chip .tpl-ok{color:var(--ok);font-size:12px;margin-left:2px;}
+  .tpl-chip .tpl-side{font-size:10.5px;color:var(--accent);font-weight:800;}
+  .lib-divider{border-top:1px solid var(--line);margin:4px 0 14px;padding-top:12px;font-size:12px;font-weight:800;color:var(--txt-dim);}
   .tpl-chip{border:1px solid var(--line);background:var(--panel-2);color:var(--txt);cursor:pointer;padding:7px 12px;border-radius:9px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;transition:.12s;position:relative;}
   .tpl-chip:hover{border-color:var(--accent-2);}
   .tpl-chip .dot{width:9px;height:9px;border-radius:50%;}
@@ -712,8 +723,13 @@
   <div class="modal">
     <h3 id="tagModalTitle">新しいタグを作る</h3>
     <div id="tplSection" style="display:none">
-      <label>定番タグから選ぶ</label>
-      <div class="tpl-list" id="tplList"></div>
+      <div class="lib-head">
+        <label id="libLabel">登録タグから追加</label>
+        <button type="button" class="lib-edit" id="libEditBtn">編集</button>
+      </div>
+      <div class="lib-hint" id="libHint">タップするとこの試合に追加されます（続けて選べます）</div>
+      <div class="tpl-list lib-list" id="tplList"></div>
+      <div class="lib-divider" id="libDivider">新しいタグを作る</div>
     </div>
     <label>タグ名</label>
     <input type="text" id="newTagName" placeholder="例：リバウンド、ターンオーバー">
@@ -725,7 +741,7 @@
     </div>
     <label>色</label>
     <div class="swatches" id="swatches"></div>
-    <label class="tpl-save-row"><input type="checkbox" id="saveTpl"> このタグを定番として登録する</label>
+    <label class="tpl-save-row"><input type="checkbox" id="saveTpl"> <span id="saveTplText">このチームの登録タグにも保存する</span></label>
     <div class="modal-actions">
       <button class="btn ghost" id="cancelTag">キャンセル</button>
       <button class="btn" id="createTag">作成</button>
@@ -892,7 +908,34 @@ let games=[],currentGameId=null,activeFilter=null,selectedColor=PALETTE[0];
 let teams=[],currentTeamId=null; // チーム {id,name,roster:[{id,no,name}]}
 let selectedSide="none"; // タグモーダルの区分選択
 let editingTypeId=null;  // 編集中のタグ種別ID（新規作成時はnull）
-let tagTemplates=[]; // 定番タグ {name,color,side}
+let tagTemplates=[]; // 旧：全チーム共通の定番タグ {name,color,side}（読み書きは残すが、今はチームごとの登録タグを使う）
+let libEditMode=false;  // 登録タグの編集（削除）モード
+/* ===== チームごとの登録タグ team.tagLibrary = [{id,name,color,side}] =====
+   初回は「旧・定番タグ」＋「そのチームの試合で使っているタグ」から作る。どちらも無ければ標準セット。 */
+function libKey(x){return (x.name||"").trim()+"|"+(x.side||"none");}
+function teamLibrary(t){
+  if(!t)return [];
+  if(Array.isArray(t.tagLibrary))return t.tagLibrary;
+  const lib=[],seen=new Set();
+  const push=(x)=>{const k=libKey(x);if(!x.name||seen.has(k))return;seen.add(k);lib.push({id:uid("lt"),name:x.name,color:x.color||PALETTE[0],side:x.side||"none"});};
+  (tagTemplates||[]).forEach(push);
+  teamGames(t.id).forEach(g=>(g.tagTypes||[]).forEach(push));
+  if(!lib.length) defaultTagTypesForTeam(t.id).forEach(push);
+  t.tagLibrary=lib;
+  return lib;
+}
+function upsertLibrary(t,name,color,side){
+  const lib=teamLibrary(t);
+  const ex=lib.find(x=>x.name===name&&(x.side||"none")===side) || lib.find(x=>x.name===name);
+  if(ex){ex.name=name;ex.color=color;ex.side=side;}
+  else lib.push({id:uid("lt"),name,color,side});
+}
+function gameHasLibTag(g,x){ return (g.tagTypes||[]).some(ty=>libKey(ty)===libKey(x)); }
+function addLibTagToGame(x){
+  const g=curGame();if(!g||gameHasLibTag(g,x))return;
+  g.tagTypes.push({id:"t_"+Date.now()+"_"+Math.random().toString(36).slice(2,5),name:x.name,color:x.color,side:x.side||"none"});
+  renderTagButtons();renderFilters();scheduleSave();
+}
 let playerSize={split:70, asideW:380}; // 左（動画）カラムの幅% / タグ一覧パネルの幅px
 function curGame(){return games.find(g=>g.id===currentGameId)||null;}
 function curTeam(){return teams.find(t=>t.id===currentTeamId)||null;}
@@ -2279,12 +2322,14 @@ function setSideSelect(side){
 function openTagModal(){
   if(!curGame())return;
   editingTypeId=null;
-  document.getElementById("tagModalTitle").textContent="新しいタグを作る";
+  document.getElementById("tagModalTitle").textContent="タグを追加";
   document.getElementById("createTag").textContent="作成";
   document.getElementById("newTagName").value="";
   selectedColor=PALETTE[0];setSideSelect("none");
-  document.getElementById("saveTpl").checked=false;
+  document.getElementById("saveTpl").checked=true;
   document.querySelector(".tpl-save-row").style.display="";
+  document.getElementById("cancelTag").textContent="閉じる";
+  libEditMode=false;
   renderSwatches();renderTemplates();
   document.getElementById("tagModalBg").classList.add("show");document.getElementById("newTagName").focus();
 }
@@ -2298,7 +2343,8 @@ function openEditTagModal(typeId){
   selectedColor=ty.color;setSideSelect(ty.side||"none");
   document.getElementById("saveTpl").checked=false;
   document.querySelector(".tpl-save-row").style.display="none"; // 編集時は定番登録を隠す
-  document.getElementById("tplSection").style.display="none";   // 編集時は定番選択を隠す
+  document.getElementById("tplSection").style.display="none";   // 編集時は登録タグ一覧を隠す
+  document.getElementById("cancelTag").textContent="キャンセル";
   renderSwatches();
   document.getElementById("tagModalBg").classList.add("show");document.getElementById("newTagName").focus();
 }
@@ -2306,15 +2352,39 @@ function closeTagModal(){document.getElementById("tagModalBg").classList.remove(
 function renderSwatches(){const box=document.getElementById("swatches");box.innerHTML="";PALETTE.forEach(c=>{const s=document.createElement("div");s.className="swatch"+(c===selectedColor?" sel":"");s.style.background=c;s.onclick=()=>{selectedColor=c;renderSwatches();};box.appendChild(s);});}
 function renderTemplates(){
   const sec=document.getElementById("tplSection"), box=document.getElementById("tplList");
-  if(!tagTemplates.length){sec.style.display="none";return;}
+  const g=curGame(); const t=g?teams.find(x=>x.id===g.teamId):null;
+  if(!t){sec.style.display="none";return;}
+  const lib=teamLibrary(t);
   sec.style.display="block";box.innerHTML="";
-  tagTemplates.forEach((tpl,i)=>{
-    const chip=document.createElement("div");chip.className="tpl-chip";
-    chip.innerHTML='<span class="dot" style="background:'+tpl.color+'"></span>'+escapeHtml(tpl.name)+'<span class="tpl-x" title="定番から削除">×</span>';
+  document.getElementById("libLabel").textContent="登録タグ（"+(t.name||"チーム")+"）";
+  const eb=document.getElementById("libEditBtn");
+  eb.classList.toggle("active",libEditMode);eb.textContent=libEditMode?"完了":"編集";
+  eb.style.display=lib.length?"":"none";
+  document.getElementById("libHint").textContent=!lib.length
+    ? "まだ登録タグがありません。下で作ると、このチームの登録タグに保存されます。"
+    : libEditMode ? "× で登録タグから削除。タップすると下の欄に読み込み、保存で上書きできます。"
+                  : "タップするとこの試合に追加されます（続けて選べます）";
+  lib.forEach((x,i)=>{
+    const added=!libEditMode&&gameHasLibTag(g,x);
+    const chip=document.createElement("div");chip.className="tpl-chip"+(added?" added":"");
+    chip.innerHTML='<span class="dot" style="background:'+x.color+'"></span>'+
+      (x.side==="opp"&&(x.name||"").indexOf("相手")!==0?'<span class="tpl-side">相手</span>':'')+escapeHtml(x.name)+
+      (added?'<span class="tpl-ok">✓</span>':'')+
+      (libEditMode?'<span class="tpl-x" title="登録タグから削除">×</span>':'');
     chip.onclick=(e)=>{
-      if(e.target.classList.contains("tpl-x")){e.stopPropagation();tagTemplates.splice(i,1);renderTemplates();scheduleSave();return;}
-      document.getElementById("newTagName").value=tpl.name;
-      selectedColor=tpl.color;setSideSelect(tpl.side||"none");renderSwatches();
+      if(libEditMode){
+        if(e.target.classList.contains("tpl-x")){
+          e.stopPropagation();
+          if(!confirm("登録タグ「"+x.name+"」を削除しますか？（試合に付けたタグは消えません）"))return;
+          lib.splice(i,1);renderTemplates();scheduleSave();return;
+        }
+        document.getElementById("newTagName").value=x.name;
+        selectedColor=x.color;setSideSelect(x.side||"none");renderSwatches();
+        document.getElementById("saveTpl").checked=true;
+        return;
+      }
+      if(added)return;
+      addLibTagToGame(x);renderTemplates();
     };
     box.appendChild(chip);
   });
@@ -2330,11 +2400,13 @@ function createTagType(){
     closeTagModal();renderTagButtons();renderFilters();renderTags();scheduleSave();
     return;
   }
-  g.tagTypes.push({id:"t_"+Date.now(),name,color:selectedColor,side:selectedSide});
+  // 同じ名前・区分のタグが試合にすでにあれば色だけ合わせる（重複させない）
+  const same=g.tagTypes.find(ty=>libKey(ty)===libKey({name,side:selectedSide}));
+  if(same) same.color=selectedColor;
+  else g.tagTypes.push({id:"t_"+Date.now(),name,color:selectedColor,side:selectedSide});
   if(document.getElementById("saveTpl").checked){
-    const exist=tagTemplates.findIndex(t=>t.name===name);
-    if(exist>=0){tagTemplates[exist].color=selectedColor;tagTemplates[exist].side=selectedSide;}
-    else{tagTemplates.push({name,color:selectedColor,side:selectedSide});}
+    const team=teams.find(x=>x.id===g.teamId);
+    if(team) upsertLibrary(team,name,selectedColor,selectedSide);
   }
   closeTagModal();renderTagButtons();renderFilters();scheduleSave();
 }
@@ -2371,6 +2443,7 @@ document.getElementById("cancelGame").onclick=closeGameModal;
 document.getElementById("gameModalBg").onclick=(e)=>{if(e.target.id==="gameModalBg")closeGameModal();};
 document.getElementById("gUrl").addEventListener("keydown",e=>{if(e.key==="Enter")createGame();});
 document.getElementById("createTag").onclick=createTagType;
+document.getElementById("libEditBtn").onclick=()=>{libEditMode=!libEditMode;renderTemplates();};
 document.getElementById("cancelTag").onclick=closeTagModal;
 document.getElementById("newTagName").addEventListener("keydown",e=>{if(e.key==="Enter")createTagType();});
 document.getElementById("tagModalBg").onclick=(e)=>{if(e.target.id==="tagModalBg")closeTagModal();};
