@@ -434,6 +434,10 @@
   .lib-hint{font-size:11.5px;color:var(--txt-dim);margin:-8px 0 14px;line-height:1.5;}
   .lib-list{max-height:34vh;overflow-y:auto;}
   .tpl-chip.added{opacity:.5;cursor:default;}
+  .tpl-chip.picked{border-color:var(--accent-2);background:rgba(60,165,255,.18);color:var(--txt);}
+  .tpl-chip .pick-mark{font-size:12px;color:var(--txt-dim);}
+  .tpl-chip.picked .pick-mark{color:var(--accent-2);}
+  .pick-tools{display:flex;gap:6px;}
   .tpl-chip .tpl-ok{color:var(--ok);font-size:12px;margin-left:2px;}
   .tpl-chip .tpl-side{font-size:10.5px;color:var(--accent);font-weight:800;}
   .lib-divider{border-top:1px solid var(--line);margin:4px 0 14px;padding-top:12px;font-size:12px;font-weight:800;color:var(--txt-dim);}
@@ -713,6 +717,17 @@
     <input type="date" id="gDate">
     <label>YouTube URL</label>
     <input type="text" id="gUrl" placeholder="https://youtu.be/...">
+    <div id="gTagSection">
+      <div class="lib-head">
+        <label id="gTagLabel">使うタグを選ぶ</label>
+        <div class="pick-tools">
+          <button type="button" class="lib-edit" id="gTagAll">すべて</button>
+          <button type="button" class="lib-edit" id="gTagNone">解除</button>
+        </div>
+      </div>
+      <div class="lib-hint" id="gTagHint"></div>
+      <div class="tpl-list lib-list" id="gTagPick"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn ghost" id="cancelGame">キャンセル</button>
       <button class="btn" id="createGame">追加</button>
@@ -968,7 +983,32 @@ function mountVideo(videoId){
 }
 function startPoll(){clearInterval(pollTimer);pollTimer=setInterval(()=>{if(playerReady()){document.getElementById("nowTime").textContent=fmt(player.getCurrentTime());}},250);}
 function fmt(s){s=Math.floor(s||0);const m=Math.floor(s/60),sec=s%60;return m+":"+String(sec).padStart(2,"0");}
-function openGameModal(){document.getElementById("gName").value="";document.getElementById("gDate").value="";document.getElementById("gUrl").value="";document.getElementById("gameModalBg").classList.add("show");document.getElementById("gName").focus();}
+let gamePick=[]; // 試合追加時に選んだ登録タグのID
+function openGameModal(){
+  document.getElementById("gName").value="";document.getElementById("gDate").value="";document.getElementById("gUrl").value="";
+  gamePick=[];renderGamePick();
+  document.getElementById("gameModalBg").classList.add("show");document.getElementById("gName").focus();
+}
+function renderGamePick(){
+  const t=curTeam(), box=document.getElementById("gTagPick");
+  const lib=t?teamLibrary(t):[];
+  box.innerHTML="";
+  document.getElementById("gTagLabel").textContent="使うタグを選ぶ";
+  document.getElementById("gTagAll").style.display=lib.length?"":"none";
+  document.getElementById("gTagNone").style.display=lib.length?"":"none";
+  gamePick=gamePick.filter(id=>lib.some(x=>x.id===id));
+  document.getElementById("gTagHint").textContent=!lib.length
+    ? "登録タグがまだありません。試合を作ったあと「＋ タグを追加」から作れます。"
+    : (t?t.name:"チーム")+"の登録タグから選択中："+gamePick.length+"個（あとから「＋ タグを追加」でも追加できます）";
+  lib.forEach(x=>{
+    const on=gamePick.includes(x.id);
+    const chip=document.createElement("div");chip.className="tpl-chip"+(on?" picked":"");
+    chip.innerHTML='<span class="pick-mark">'+(on?'☑':'☐')+'</span><span class="dot" style="background:'+x.color+'"></span>'+
+      (x.side==="opp"&&(x.name||"").indexOf("相手")!==0?'<span class="tpl-side">相手</span>':'')+escapeHtml(x.name);
+    chip.onclick=()=>{const k=gamePick.indexOf(x.id);if(k>=0)gamePick.splice(k,1);else gamePick.push(x.id);renderGamePick();};
+    box.appendChild(chip);
+  });
+}
 function closeGameModal(){document.getElementById("gameModalBg").classList.remove("show");}
 function toWareki(ymd){
   // "YYYY-MM-DD" → "令和X年M月D日"。変換できなければそのまま返す。
@@ -993,7 +1033,10 @@ function createGame(){
   const vid=extractId(url);
   if(!vid){alert("YouTube の URL を確認してください。");return;}
   if(!currentTeamId){ alert("先にチームを追加・選択してください。"); return; }
-  const g={id:"g_"+Date.now(),teamId:currentTeamId,name,date,videoId:vid,tagTypes:defaultTagTypesForTeam(currentTeamId),tags:[]};
+  // 使うタグ：チームの登録タグから選んだもの（並びは登録タグの順）
+  const lib=teamLibrary(curTeam());
+  const tagTypes=lib.filter(x=>gamePick.includes(x.id)).map((x,i)=>({id:"t_"+Date.now()+"_"+i,name:x.name,color:x.color,side:x.side||"none"}));
+  const g={id:"g_"+Date.now(),teamId:currentTeamId,name,date,videoId:vid,tagTypes,tags:[]};
   games.unshift(g);closeGameModal();renderGames();selectGame(g.id);scheduleSave();
 }
 function selectGame(id){
@@ -2443,6 +2486,8 @@ document.getElementById("cancelGame").onclick=closeGameModal;
 document.getElementById("gameModalBg").onclick=(e)=>{if(e.target.id==="gameModalBg")closeGameModal();};
 document.getElementById("gUrl").addEventListener("keydown",e=>{if(e.key==="Enter")createGame();});
 document.getElementById("createTag").onclick=createTagType;
+document.getElementById("gTagAll").onclick=()=>{gamePick=teamLibrary(curTeam()).map(x=>x.id);renderGamePick();};
+document.getElementById("gTagNone").onclick=()=>{gamePick=[];renderGamePick();};
 document.getElementById("libEditBtn").onclick=()=>{libEditMode=!libEditMode;renderTemplates();};
 document.getElementById("cancelTag").onclick=closeTagModal;
 document.getElementById("newTagName").addEventListener("keydown",e=>{if(e.key==="Enter")createTagType();});
